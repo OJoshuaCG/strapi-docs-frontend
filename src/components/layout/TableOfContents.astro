@@ -1,0 +1,72 @@
+---
+import type { TocEntry } from '@/lib/domain/types';
+
+interface Props {
+  entries: TocEntry[];
+}
+
+const { entries } = Astro.props;
+---
+
+<div>
+  <p class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--text-muted);">
+    En esta página
+  </p>
+
+  <nav aria-label="Table of contents">
+    <ul class="space-y-1">
+      {entries.map((entry) => (
+        <li>
+          <a
+            href={`#${entry.id}`}
+            data-toc-link
+            class="toc-link block text-sm py-0.5 transition-colors leading-snug"
+            style={`
+              color: var(--text-muted);
+              padding-left: ${(entry.level - 2) * 0.75}rem;
+            `}
+          >
+            {entry.text}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+</div>
+
+<script>
+  const links = document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]');
+  const headings = document.querySelectorAll<HTMLElement>('.prose-docs h2, .prose-docs h3, .prose-docs h4, .prose-docs h5, .prose-docs h6');
+
+  function setActive(id: string) {
+    links.forEach((link) => {
+      const isActive = link.getAttribute('href') === `#${id}`;
+      if (isActive) {
+        link.style.color = 'var(--color-brand-500)';
+        link.style.fontWeight = '500';
+      } else {
+        link.style.color = 'var(--text-muted)';
+        link.style.fontWeight = '';
+      }
+    });
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          setActive(entry.target.id);
+          break;
+        }
+      }
+    },
+    {
+      rootMargin: '-60px 0px -80% 0px',
+      threshold: 0,
+    }
+  );
+
+  headings.forEach((h) => {
+    if (h.id) observer.observe(h);
+  });
+</script>

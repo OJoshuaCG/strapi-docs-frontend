@@ -1,0 +1,177 @@
+---
+import DocsLayout from '@/layouts/DocsLayout.astro';
+import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
+import ArticleNav from '@/components/ui/ArticleNav.astro';
+import { loadCommonData } from '@/lib/utils/page-data';
+import { getArticleBySlug, getArticlesByCategory } from '@/lib/strapi/client';
+import { extractToc } from '@/lib/utils/toc';
+import { isValidLocale, appConfig } from '@/lib/utils/config';
+import { renderMarkdown } from '@/lib/utils/markdown';
+
+const { locale, categorySlug, articleSlug } = Astro.params;
+
+// Validate locale
+if (!locale || !isValidLocale(locale)) {
+  return Astro.redirect(`/${appConfig.defaultLocale}`, 302);
+}
+
+if (!categorySlug || !articleSlug) {
+  return Astro.redirect(`/${locale}`, 302);
+}
+
+// Fetch article first to get its section slug for the sidebar
+let article;
+try {
+  article = await getArticleBySlug(articleSlug, locale);
+} catch (err) {
+  console.error('[portal] Failed to fetch article:', err);
+  return new Response(null, { status: 500 });
+}
+
+if (!article) {
+  return Astro.redirect(`/${locale}`, 302);
+}
+
+const articleHtml = article.body ? await renderMarkdown(article.body) : '';
+
+const sectionSlug = article.category?.documentation_section?.slug;
+
+// Load common data with the correct section for the sidebar
+let common;
+try {
+  common = await loadCommonData(locale, sectionSlug);
+} catch (err) {
+  console.error('[portal] Failed to load common data:', err);
+  return new Response(null, { status: 500 });
+}
+const { settings, sections, sidebarCategories, supportedLocales } = common;
+
+// Article navigation: prev/next within the same category
+const siblingArticles = await getArticlesByCategory(categorySlug, locale).catch(() => []);
+const currentIndex = siblingArticles.findIndex((a) => a.slug === articleSlug);
+const prevArticle = currentIndex > 0 ? siblingArticles[currentIndex - 1] : null;
+const nextArticle = currentIndex < siblingArticles.length - 1 ? siblingArticles[currentIndex + 1] : null;
+
+// TOC from content blocks
+const toc = extractToc(article.body);
+
+// SEO
+const pageTitle = article.seoTitle ?? article.title;
+const pageDescription = article.seoDescription ?? article.excerpt ?? undefined;
+const ogImage = article.ogImage?.url ?? settings?.ogDefaultImage?.url;
+const canonicalUrl = Astro.site
+  ? new URL(Astro.url.pathname, Astro.site).toString()
+  : Astro.url.href;
+
+// Breadcrumbs
+const breadcrumbs = [
+  { label: settings?.siteName ?? 'Docs', href: `/${locale}` },
+  ...(article.category?.documentation_section
+    ? [{ label: article.category.documentation_section.name, href: `/${locale}?section=${sectionSlug}` }]
+    : []),
+  ...(article.category
+    ? [{ label: article.category.name }]
+    : []),
+  { label: article.title },
+];
+---
+
+<DocsLayout
+  title={pageTitle}
+  description={pageDescription}
+  ogImage={ogImage}
+  canonicalUrl={canonicalUrl}
+  settings={settings}
+  sections={sections}
+  sidebarCategories={sidebarCategories}
+  activeSectionSlug={sectionSlug}
+  activeCategorySlug={categorySlug}
+  activeArticleSlug={articleSlug}
+  toc={toc}
+  locale={locale}
+  supportedLocales={supportedLocales}
+>
+  <!-- Breadcrumbs -->
+  <Breadcrumbs items={breadcrumbs} />
+
+  <!-- Article header -->
+  <header class="mb-8">
+    <div class="flex items-start gap-3 flex-wrap">
+      <h1
+        class="text-3xl font-bold leading-tight flex-1"
+        style="color: var(--text-primary); line-height: var(--heading-line-height, 1.25);"
+      >
+        {article.title}
+      </h1>
+
+      {article.version && (
+        <span
+          class="shrink-0 mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+          style="
+            border-color: var(--color-brand-500);
+            color: var(--color-brand-500);
+            background-color: var(--color-brand-50);
+          "
+        >
+          v{article.version}
+        </span>
+      )}
+    </div>
+
+    {article.excerpt && (
+      <p class="mt-3 text-lg" style="color: var(--text-secondary);">
+        {article.excerpt}
+      </p>
+    )}
+
+    <!-- Updated date -->
+    <p class="mt-3 text-xs" style="color: var(--text-muted);">
+      Actualizado:{' '}
+      <time datetime={article.updatedAt}>
+        {new Date(article.updatedAt).toLocaleDateString(locale, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })}
+      </time>
+    </p>
+  </header>
+
+  <!-- Content -->
+  {articleHtml ? (
+    <div class="prose-docs" set:html={articleHtml} />
+  ) : (
+    <div
+      class="py-12 text-center rounded-lg border"
+      style="border-color: var(--border-color); color: var(--text-muted);"
+    >
+      Este artículo aún no tiene contenido.
+    </div>
+  )}
+
+  <!-- Prev / Next navigation -->
+  <ArticleNav
+    prev={prevArticle
+      ? { title: prevArticle.title, href: `/${locale}/${categorySlug}/${prevArticle.slug}` }
+      : undefined}
+    next={nextArticle
+      ? { title: nextArticle.title, href: `/${locale}/${categorySlug}/${nextArticle.slug}` }
+      : undefined}
+  />
+</DocsLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const code = btn.dataset['code'] ?? '';
+      try {
+        await navigator.clipboard.writeText(code);
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      } catch {
+        btn.textContent = 'Error';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      }
+    });
+  });
+</script>

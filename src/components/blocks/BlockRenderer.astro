@@ -1,0 +1,159 @@
+---
+import CodeBlock from './CodeBlock.astro';
+import { slugify } from '@/lib/utils/slugify';
+import type {
+  ContentBlock,
+  InlineNode,
+  TextNode,
+  LinkNode,
+  HeadingBlock,
+} from '@/lib/domain/types';
+
+interface Props {
+  blocks: ContentBlock[];
+}
+
+const { blocks } = Astro.props;
+
+// ── Inline rendering ─────────────────────────────────────────────────────────
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function renderInline(node: InlineNode): string {
+  if (node.type === 'link') {
+    const inner = (node as LinkNode).children.map(renderInline).join('');
+    const href = escapeHtml((node as LinkNode).url);
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
+  }
+
+  const t = node as TextNode;
+  let text = escapeHtml(t.text);
+  if (t.code) text = `<code>${text}</code>`;
+  if (t.bold) text = `<strong>${text}</strong>`;
+  if (t.italic) text = `<em>${text}</em>`;
+  if (t.underline) text = `<u>${text}</u>`;
+  if (t.strikethrough) text = `<s>${text}</s>`;
+  return text;
+}
+
+function inlineHtml(nodes: InlineNode[]): string {
+  return nodes.map(renderInline).join('');
+}
+
+function headingText(block: HeadingBlock): string {
+  return block.children
+    .map((n) => ('text' in n ? n.text : (n as LinkNode).children.map((c) => c.text).join('')))
+    .join('');
+}
+
+// ── Split blocks into segments: text blocks (rendered as HTML string) ────────
+// and code/image blocks (rendered as Astro components for full feature support)
+
+type TextSegment = { kind: 'html'; html: string };
+type CodeSegment = { kind: 'code'; code: string; language: string };
+type ImageSegment = {
+  kind: 'image';
+  url: string;
+  alt: string | null;
+  width: number;
+  height: number;
+};
+type Segment = TextSegment | CodeSegment | ImageSegment;
+
+const segments: Segment[] = [];
+let buffer = '';
+
+function flushBuffer() {
+  if (buffer.trim()) {
+    segments.push({ kind: 'html', html: buffer });
+    buffer = '';
+  }
+}
+
+for (const block of blocks) {
+  if (block.type === 'code') {
+    flushBuffer();
+    segments.push({
+      kind: 'code',
+      code: block.children[0]?.text ?? '',
+      language: block.language ?? 'text',
+    });
+    continue;
+  }
+
+  if (block.type === 'image') {
+    flushBuffer();
+    segments.push({
+      kind: 'image',
+      url: block.image.url,
+      alt: block.image.alternativeText,
+      width: block.image.width,
+      height: block.image.height,
+    });
+    continue;
+  }
+
+  if (block.type === 'paragraph') {
+    buffer += `<p>${inlineHtml(block.children)}</p>\n`;
+    continue;
+  }
+
+  if (block.type === 'heading') {
+    const id = slugify(headingText(block));
+    const text = inlineHtml(block.children);
+    const l = block.level;
+    buffer += `<h${l} id="${id}"><a href="#${id}" style="color:inherit;text-decoration:none;">${text}</a></h${l}>\n`;
+    continue;
+  }
+
+  if (block.type === 'list') {
+    const tag = block.format === 'ordered' ? 'ol' : 'ul';
+    const items = block.children
+      .map((item) => `<li>${inlineHtml(item.children)}</li>`)
+      .join('\n');
+    buffer += `<${tag}>\n${items}\n</${tag}>\n`;
+    continue;
+  }
+
+  if (block.type === 'quote') {
+    buffer += `<blockquote>${inlineHtml(block.children)}</blockquote>\n`;
+    continue;
+  }
+}
+
+flushBuffer();
+---
+
+<div class="prose-docs">
+  {segments.map((seg) => {
+    if (seg.kind === 'html') return <div set:html={seg.html} />;
+    if (seg.kind === 'code') return <CodeBlock code={seg.code} language={seg.language} />;
+    if (seg.kind === 'image') {
+      return (
+        <figure class="my-6">
+          <img
+            src={seg.url}
+            alt={seg.alt ?? ''}
+            width={seg.width}
+            height={seg.height}
+            loading="lazy"
+            decoding="async"
+            style="border-radius: var(--border-radius, 0.5rem); max-width: 100%; height: auto;"
+          />
+          {seg.alt && (
+            <figcaption class="text-center text-sm mt-2" style="color: var(--text-muted);">
+              {seg.alt}
+            </figcaption>
+          )}
+        </figure>
+      );
+    }
+    return null;
+  })}
+</div>

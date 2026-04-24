@@ -1,0 +1,141 @@
+---
+import DocsLayout from '@/layouts/DocsLayout.astro';
+import { loadCommonData } from '@/lib/utils/page-data';
+import { getCategoriesWithArticles } from '@/lib/strapi/client';
+import { isValidLocale, appConfig } from '@/lib/utils/config';
+import type { SidebarCategory } from '@/lib/domain/types';
+
+const { locale } = Astro.params;
+
+if (!locale || !isValidLocale(locale)) {
+  return Astro.redirect(`/${appConfig.defaultLocale}`, 302);
+}
+
+const sectionSlug = Astro.url.searchParams.get('section') ?? undefined;
+
+let common;
+try {
+  common = await loadCommonData(locale, sectionSlug);
+} catch (err) {
+  console.error('[portal] Failed to load common data:', err);
+  return new Response(null, { status: 500 });
+}
+const { settings, sections, supportedLocales } = common;
+
+// For the home grid, load ALL categories (all sections) with their articles
+const allCategories: SidebarCategory[] = sectionSlug
+  ? common.sidebarCategories
+  : await getCategoriesWithArticles(locale);
+
+// Group categories by section for the home grid
+type CategoryGroup = {
+  sectionName: string;
+  categories: SidebarCategory[];
+};
+
+const categoryGroups: CategoryGroup[] = [];
+
+if (sectionSlug) {
+  const activeSection = sections.find((s) => s.slug === sectionSlug);
+  if (activeSection) {
+    categoryGroups.push({
+      sectionName: activeSection.name,
+      categories: allCategories,
+    });
+  }
+} else {
+  // Group by section name using the sidebar data per section
+  for (const section of sections) {
+    const cats = await getCategoriesWithArticles(locale, section.slug);
+    if (cats.length > 0) {
+      categoryGroups.push({ sectionName: section.name, categories: cats });
+    }
+  }
+}
+
+const siteName = settings?.siteName ?? 'Documentation';
+const siteDescription = settings?.siteDescription ?? '';
+---
+
+<DocsLayout
+  title={siteName}
+  description={siteDescription ?? undefined}
+  settings={settings}
+  sections={sections}
+  sidebarCategories={common.sidebarCategories}
+  activeSectionSlug={sectionSlug}
+  locale={locale}
+  supportedLocales={supportedLocales}
+>
+  <!-- Hero -->
+  <div class="mb-12">
+    <h1 class="text-3xl font-bold mb-3" style="color: var(--text-primary);">
+      {siteName}
+    </h1>
+    {siteDescription && (
+      <p class="text-lg" style="color: var(--text-secondary);">
+        {siteDescription}
+      </p>
+    )}
+  </div>
+
+  <!-- Category grid grouped by section -->
+  {categoryGroups.map((group) => (
+    <section class="mb-10">
+      <h2
+        class="text-xs font-semibold uppercase tracking-wider mb-4"
+        style="color: var(--text-muted);"
+      >
+        {group.sectionName}
+      </h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {group.categories.map((cat) => (
+          <a
+            href={`/${locale}/${cat.slug}/${cat.articles[0]?.slug ?? ''}`}
+            class="group block p-5 rounded-lg border transition-all hover:shadow-md"
+            style="
+              border-color: var(--border-color);
+              background-color: var(--bg-secondary);
+            "
+          >
+            <h3
+              class="font-semibold mb-1.5 transition-colors group-hover:text-[var(--color-brand-500)]"
+              style="color: var(--text-primary);"
+            >
+              {cat.name}
+            </h3>
+
+            {cat.description && (
+              <p class="text-sm mb-3 line-clamp-2" style="color: var(--text-secondary);">
+                {cat.description}
+              </p>
+            )}
+
+            <p class="text-xs" style="color: var(--text-muted);">
+              {cat.articles.length} {cat.articles.length === 1 ? 'artículo' : 'artículos'}
+            </p>
+          </a>
+        ))}
+      </div>
+    </section>
+  ))}
+
+  {categoryGroups.length === 0 && (
+    <div
+      class="flex flex-col items-center justify-center py-20 text-center"
+      style="color: var(--text-muted);"
+    >
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mb-4 opacity-40">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <p class="text-lg font-medium mb-1" style="color: var(--text-secondary);">
+        Sin contenido todavía
+      </p>
+      <p class="text-sm">
+        Publica artículos en Strapi para verlos aquí.
+      </p>
+    </div>
+  )}
+</DocsLayout>

@@ -1,0 +1,55 @@
+---
+interface NavArticle {
+  title: string;
+  href: string;
+}
+
+interface Props {
+  prev?: NavArticle;
+  next?: NavArticle;
+}
+
+const { prev, next } = Astro.props;
+---
+
+{(prev || next) && (
+  <nav
+    class="flex items-stretch gap-4 mt-12 pt-6 border-t"
+    style="border-color: var(--border-color);"
+    aria-label="Article navigation"
+  >
+    {prev ? (
+      <a
+        href={prev.href}
+        class="flex-1 group flex flex-col gap-1 p-4 rounded-lg border transition-colors"
+        style="border-color: var(--border-color);"
+      >
+        <span class="text-xs" style="color: var(--text-muted);">← Anterior</span>
+        <span
+          class="text-sm font-medium transition-colors group-hover:underline"
+          style="color: var(--text-primary);"
+        >
+          {prev.title}
+        </span>
+      </a>
+    ) : (
+      <div class="flex-1"></div>
+    )}
+
+    {next && (
+      <a
+        href={next.href}
+        class="flex-1 group flex flex-col gap-1 p-4 rounded-lg border text-right transition-colors"
+        style="border-color: var(--border-color);"
+      >
+        <span class="text-xs" style="color: var(--text-muted);">Siguiente →</span>
+        <span
+          class="text-sm font-medium transition-colors group-hover:underline"
+          style="color: var(--text-primary);"
+        >
+          {next.title}
+        </span>
+      </a>
+    )}
+  </nav>
+)}

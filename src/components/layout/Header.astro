@@ -1,0 +1,127 @@
+---
+import ThemeToggle from '@/components/ui/ThemeToggle.astro';
+import LanguageSwitcher from '@/components/ui/LanguageSwitcher.astro';
+import type { DocumentationSpaceSetting, DocumentationSection } from '@/lib/domain/types';
+
+interface Props {
+  settings: DocumentationSpaceSetting | null;
+  sections: DocumentationSection[];
+  activeSectionSlug?: string;
+  locale: string;
+  supportedLocales: string[];
+}
+
+const { settings, sections, activeSectionSlug, locale, supportedLocales } = Astro.props;
+
+const logo = settings?.sidebarLogo;
+const siteName = settings?.siteName ?? 'Docs';
+const ctaText = settings?.headerLinkText;
+const ctaUrl = settings?.headerLinkUrl;
+---
+
+<header
+  class="fixed top-0 left-0 right-0 z-40 border-b backdrop-blur-sm"
+  style="
+    height: var(--header-height, 3.5rem);
+    background-color: color-mix(in srgb, var(--bg-primary) 90%, transparent);
+    border-color: var(--border-color);
+  "
+>
+  <div class="flex items-center h-full px-4 gap-4 max-w-full">
+    <!-- Mobile menu button -->
+    <button
+      id="mobile-menu-btn"
+      class="lg:hidden p-1.5 rounded-md transition-colors"
+      style="color: var(--text-secondary);"
+      aria-label="Open menu"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+
+    <!-- Logo / Site name -->
+    <a
+      href={`/${locale}`}
+      class="flex items-center gap-2 shrink-0 font-semibold"
+      style="color: var(--text-primary);"
+    >
+      {logo ? (
+        <img
+          src={logo.url}
+          alt={logo.alternativeText ?? siteName}
+          width={logo.width}
+          height={logo.height}
+          class="object-contain"
+          style={`height: ${settings?.headerLogoSize === 'sm' ? '1.5rem' : settings?.headerLogoSize === 'lg' ? '2.25rem' : settings?.headerLogoSize === 'xl' ? '2.75rem' : '2rem'}; width: auto;`}
+        />
+      ) : (
+        <span class="text-base">{siteName}</span>
+      )}
+    </a>
+
+    <!-- Divider -->
+    {sections.length > 0 && (
+      <div class="hidden lg:block h-5 w-px" style="background-color: var(--border-color);"></div>
+    )}
+
+    <!-- Sections nav -->
+    <nav class="hidden lg:flex items-center gap-1 overflow-x-auto flex-1" aria-label="Sections">
+      {sections.map((section) => {
+        const isActive = section.slug === activeSectionSlug;
+        return (
+          <a
+            href={`/${locale}?section=${section.slug}`}
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+            style={isActive
+              ? 'background-color: var(--color-brand-50); color: var(--color-brand-500);'
+              : 'color: var(--text-secondary);'
+            }
+            aria-current={isActive ? 'page' : undefined}
+          >
+            {section.icon && (
+              <span class="text-base" aria-hidden="true">{section.icon}</span>
+            )}
+            {section.name}
+          </a>
+        );
+      })}
+    </nav>
+
+    <div class="ml-auto flex items-center gap-2">
+      <!-- External CTA -->
+      {ctaText && ctaUrl && (
+        <a
+          href={ctaUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border transition-colors"
+          style="
+            color: var(--text-secondary);
+            border-color: var(--border-color);
+          "
+        >
+          {ctaText}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
+      )}
+
+      <!-- Language switcher -->
+      {supportedLocales.length > 1 && (
+        <LanguageSwitcher
+          currentLocale={locale}
+          supportedLocales={supportedLocales}
+        />
+      )}
+
+      <!-- Dark mode toggle -->
+      <ThemeToggle />
+    </div>
+  </div>
+</header>

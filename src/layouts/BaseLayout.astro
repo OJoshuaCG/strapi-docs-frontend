@@ -1,0 +1,68 @@
+---
+import '@/styles/global.css';
+import { buildThemeCss, buildGoogleFontsUrl } from '@/lib/utils/theme';
+import type { DocumentationSpaceSetting } from '@/lib/domain/types';
+
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+  canonicalUrl?: string;
+  settings: DocumentationSpaceSetting | null;
+  locale?: string;
+}
+
+const { title, description, ogImage, canonicalUrl, settings, locale = 'es' } = Astro.props;
+
+const themeCss = buildThemeCss(settings);
+const fontsUrl = buildGoogleFontsUrl(settings);
+const siteName = settings?.siteName ?? 'Documentation';
+const fullTitle = title !== siteName ? `${title} — ${siteName}` : title;
+const faviconUrl = settings?.favicon?.url;
+const resolvedOgImage = ogImage ?? settings?.ogDefaultImage?.url;
+---
+
+<!doctype html>
+<html lang={locale} class="">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{fullTitle}</title>
+    {description && <meta name="description" content={description} />}
+
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={fullTitle} />
+    {description && <meta property="og:description" content={description} />}
+    {resolvedOgImage && <meta property="og:image" content={resolvedOgImage} />}
+    <meta property="og:type" content="website" />
+
+    <!-- Favicon -->
+    {faviconUrl && <link rel="icon" href={faviconUrl} />}
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href={fontsUrl} />
+
+    <!-- Theme CSS variables (server-generated, zero JS) -->
+    <style set:html={`:root{}\n${themeCss}`} />
+
+    <!-- Dark mode init — runs before paint to avoid flash -->
+    <script is:inline>
+      (function () {
+        const stored = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (stored === 'dark' || (!stored && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

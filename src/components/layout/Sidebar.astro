@@ -1,0 +1,73 @@
+---
+import type { SidebarCategory } from '@/lib/domain/types';
+
+interface Props {
+  categories: SidebarCategory[];
+  activeCategorySlug?: string;
+  activeArticleSlug?: string;
+  locale: string;
+}
+
+const { categories, activeCategorySlug, activeArticleSlug, locale } = Astro.props;
+---
+
+<nav class="py-4 px-3" aria-label="Documentation navigation">
+  {categories.length === 0 && (
+    <p class="text-sm px-2 py-4" style="color: var(--text-muted);">
+      No hay contenido en esta sección.
+    </p>
+  )}
+
+  {categories.map((category) => {
+    const isCategoryActive = category.slug === activeCategorySlug;
+
+    return (
+      <div class="mb-5">
+        <!-- Category title (not clickable, it's a group label) -->
+        <p
+          class="px-2 mb-1 text-xs font-semibold uppercase tracking-wider"
+          style="color: var(--text-muted);"
+        >
+          {category.name}
+        </p>
+
+        <!-- Articles -->
+        <ul class="space-y-0.5">
+          {category.articles.map((article) => {
+            const isActive = isCategoryActive && article.slug === activeArticleSlug;
+            return (
+              <li>
+                <a
+                  href={`/${locale}/${category.slug}/${article.slug}`}
+                  class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors"
+                  style={isActive
+                    ? 'color: var(--color-brand-500); background-color: var(--color-brand-50); font-weight: 500;'
+                    : 'color: var(--text-secondary);'
+                  }
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  {isActive && (
+                    <span
+                      class="shrink-0 w-0.5 h-4 rounded-full"
+                      style="background-color: var(--color-brand-500);"
+                      aria-hidden="true"
+                    ></span>
+                  )}
+                  <span class:list={[!isActive && 'pl-1.5']}>{article.title}</span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  })}
+</nav>
+
+<script>
+  // Scroll active item into view on load
+  const activeLink = document.querySelector('[aria-current="page"]');
+  if (activeLink) {
+    activeLink.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  }
+</script>

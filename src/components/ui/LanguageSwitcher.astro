@@ -1,0 +1,102 @@
+---
+interface Props {
+  currentLocale: string;
+  supportedLocales: string[];
+}
+
+const { currentLocale, supportedLocales } = Astro.props;
+
+const localeLabels: Record<string, string> = {
+  es: 'ES',
+  en: 'EN',
+  fr: 'FR',
+  pt: 'PT',
+  de: 'DE',
+};
+
+function getLabel(locale: string): string {
+  return localeLabels[locale] ?? locale.toUpperCase();
+}
+---
+
+<div class="relative" id="lang-switcher-wrapper">
+  <button
+    id="lang-btn"
+    class="flex items-center gap-1 px-2 py-1.5 rounded-md text-sm font-medium transition-colors"
+    style="color: var(--text-secondary);"
+    aria-haspopup="listbox"
+    aria-expanded="false"
+    type="button"
+  >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="2" y1="12" x2="22" y2="12"/>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    </svg>
+    {getLabel(currentLocale)}
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
+
+  <ul
+    id="lang-menu"
+    class="absolute right-0 top-full mt-1 rounded-md border shadow-lg py-1 min-w-[6rem] hidden z-50"
+    style="
+      background-color: var(--bg-primary);
+      border-color: var(--border-color);
+    "
+    role="listbox"
+    aria-label="Select language"
+  >
+    {supportedLocales.map((locale) => {
+      const isActive = locale === currentLocale;
+      return (
+        <li role="option" aria-selected={isActive}>
+          <button
+            data-locale={locale}
+            class="w-full text-left px-3 py-1.5 text-sm transition-colors"
+            style={isActive
+              ? 'color: var(--color-brand-500); font-weight: 500;'
+              : 'color: var(--text-secondary);'
+            }
+            type="button"
+          >
+            {getLabel(locale)}
+          </button>
+        </li>
+      );
+    })}
+  </ul>
+</div>
+
+<script>
+  const btn = document.getElementById('lang-btn');
+  const menu = document.getElementById('lang-menu');
+
+  function toggle(open: boolean) {
+    menu?.classList.toggle('hidden', !open);
+    btn?.setAttribute('aria-expanded', String(open));
+  }
+
+  btn?.addEventListener('click', () => {
+    const isOpen = btn.getAttribute('aria-expanded') === 'true';
+    toggle(!isOpen);
+  });
+
+  document.addEventListener('click', (e) => {
+    const wrapper = document.getElementById('lang-switcher-wrapper');
+    if (!wrapper?.contains(e.target as Node)) toggle(false);
+  });
+
+  menu?.querySelectorAll<HTMLButtonElement>('[data-locale]').forEach((localeBtn) => {
+    localeBtn.addEventListener('click', () => {
+      const locale = localeBtn.dataset['locale'];
+      if (!locale) return;
+      // Navigate to same path but with new locale
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      parts[0] = locale;
+      window.location.pathname = '/' + parts.join('/');
+    });
+  });
+</script>

@@ -1,0 +1,25 @@
+---
+import type { DocumentationSpaceSetting } from '@/lib/domain/types';
+
+interface Props {
+  settings: DocumentationSpaceSetting | null;
+  style?: string;
+}
+
+const { settings, style } = Astro.props;
+const footerText = settings?.footerText;
+---
+
+{footerText && (
+  <footer
+    class="border-t py-4 px-6 text-sm"
+    style={`
+      color: var(--text-muted);
+      border-color: var(--border-color);
+      background-color: var(--bg-primary);
+      ${style ?? ''}
+    `}
+  >
+    {footerText}
+  </footer>
+)}

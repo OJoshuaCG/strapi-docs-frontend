@@ -1,0 +1,6 @@
+---
+import { appConfig } from '@/lib/utils/config';
+
+// Redirect root to default locale
+return Astro.redirect(`/${appConfig.defaultLocale}`, 302);
+---

@@ -1,0 +1,98 @@
+---
+import { codeToHtml } from 'shiki';
+
+interface Props {
+  code: string;
+  language: string;
+}
+
+const { code, language } = Astro.props;
+
+// Map Strapi language identifiers to Shiki-supported ones
+const langMap: Record<string, string> = {
+  js: 'javascript',
+  ts: 'typescript',
+  py: 'python',
+  sh: 'bash',
+  shell: 'bash',
+  yml: 'yaml',
+  text: 'plaintext',
+  plain: 'plaintext',
+};
+
+const resolvedLang = langMap[language] ?? language;
+
+// Render with both light and dark themes; CSS switches them via .dark class
+let lightHtml = '';
+let darkHtml = '';
+
+try {
+  [lightHtml, darkHtml] = await Promise.all([
+    codeToHtml(code, {
+      lang: resolvedLang,
+      theme: 'github-light',
+    }),
+    codeToHtml(code, {
+      lang: resolvedLang,
+      theme: 'github-dark',
+    }),
+  ]);
+} catch {
+  // Fallback for unknown languages
+  const fallback = await codeToHtml(code, { lang: 'plaintext', theme: 'github-light' });
+  const fallbackDark = await codeToHtml(code, { lang: 'plaintext', theme: 'github-dark' });
+  lightHtml = fallback;
+  darkHtml = fallbackDark;
+}
+
+const displayLang = language !== 'text' && language !== 'plain' ? language : '';
+const copyId = `copy-${Math.random().toString(36).slice(2, 9)}`;
+---
+
+<div class="code-block-wrapper" data-code-block>
+  <div class="code-block-header">
+    <span>{displayLang || 'code'}</span>
+    <button
+      id={copyId}
+      class="copy-btn"
+      data-code={code}
+      type="button"
+      aria-label="Copy code"
+    >
+      Copy
+    </button>
+  </div>
+
+  <!-- Light theme -->
+  <div class="shiki-light dark:hidden" set:html={lightHtml} />
+
+  <!-- Dark theme -->
+  <div class="shiki-dark hidden dark:block" set:html={darkHtml} />
+</div>
+
+<style>
+  /* Override shiki's inline background so our CSS vars take over */
+  :global(.code-block-wrapper .shiki) {
+    background-color: var(--code-bg) !important;
+  }
+
+  :global(.code-block-wrapper .shiki code) {
+    background-color: transparent !important;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const code = btn.dataset['code'] ?? '';
+      try {
+        await navigator.clipboard.writeText(code);
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      } catch {
+        btn.textContent = 'Error';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      }
+    });
+  });
+</script>
