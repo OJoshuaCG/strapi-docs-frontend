@@ -22,35 +22,29 @@ try {
 }
 const { settings, sections, supportedLocales } = common;
 
-// For the home grid, load ALL categories (all sections) with their articles
-const allCategories: SidebarCategory[] = sectionSlug
-  ? common.sidebarCategories
-  : await getCategoriesWithArticles(locale);
-
-// Group categories by section for the home grid
+// For the home grid: single call, then group by section using sections order
 type CategoryGroup = {
   sectionName: string;
   categories: SidebarCategory[];
 };
 
-const categoryGroups: CategoryGroup[] = [];
+let categoryGroups: CategoryGroup[];
 
 if (sectionSlug) {
   const activeSection = sections.find((s) => s.slug === sectionSlug);
-  if (activeSection) {
-    categoryGroups.push({
-      sectionName: activeSection.name,
-      categories: allCategories,
-    });
-  }
+  categoryGroups = activeSection
+    ? [{ sectionName: activeSection.name, categories: common.sidebarCategories }]
+    : [];
 } else {
-  // Group by section name using the sidebar data per section
-  for (const section of sections) {
-    const cats = await getCategoriesWithArticles(locale, section.slug);
-    if (cats.length > 0) {
-      categoryGroups.push({ sectionName: section.name, categories: cats });
-    }
-  }
+  const allCategories = await getCategoriesWithArticles(locale);
+  categoryGroups = sections
+    .map((section) => ({
+      sectionName: section.name,
+      categories: allCategories.filter(
+        (cat) => cat.documentation_section?.slug === section.slug
+      ),
+    }))
+    .filter((g) => g.categories.length > 0);
 }
 
 const siteName = settings?.siteName ?? 'Documentation';
@@ -113,7 +107,7 @@ const siteDescription = settings?.siteDescription ?? '';
             )}
 
             <p class="text-xs" style="color: var(--text-muted);">
-              {cat.articles.length} {cat.articles.length === 1 ? 'artículo' : 'artículos'}
+              {cat.articles.length} {cat.articles.length === 1 ? 'article' : 'articles'}
             </p>
           </a>
         ))}
@@ -131,10 +125,10 @@ const siteDescription = settings?.siteDescription ?? '';
         <polyline points="14 2 14 8 20 8"/>
       </svg>
       <p class="text-lg font-medium mb-1" style="color: var(--text-secondary);">
-        Sin contenido todavía
+        No content yet
       </p>
       <p class="text-sm">
-        Publica artículos en Strapi para verlos aquí.
+        Publish articles in Strapi to see them here.
       </p>
     </div>
   )}

@@ -123,6 +123,8 @@ export async function getCategoriesWithArticles(
     'populate[articles][fields][0]': 'title',
     'populate[articles][fields][1]': 'slug',
     'populate[articles][fields][2]': 'order',
+    'populate[documentation_section][fields][0]': 'name',
+    'populate[documentation_section][fields][1]': 'slug',
   };
 
   if (sectionSlug) {
@@ -198,7 +200,7 @@ export async function getArticleBySlug(
 export async function getArticlesByCategory(
   categorySlug: string,
   locale: string
-): Promise<DocumentationArticle[]> {
+): Promise<Pick<DocumentationArticle, 'id' | 'documentId' | 'title' | 'slug' | 'order'>[]> {
   const res = await strapiGet<StrapiListResponse<DocumentationArticle>>(
     '/api/documentation-articles',
     {
@@ -208,6 +210,9 @@ export async function getArticlesByCategory(
         'filters[category][slug][$eq]': categorySlug,
         'sort': 'order:asc,title:asc',
         'pagination[pageSize]': 100,
+        'fields[0]': 'title',
+        'fields[1]': 'slug',
+        'fields[2]': 'order',
       },
     }
   );
