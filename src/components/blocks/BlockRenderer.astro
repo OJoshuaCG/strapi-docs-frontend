@@ -1,6 +1,7 @@
 ---
 import CodeBlock from './CodeBlock.astro';
 import { slugify } from '@/lib/utils/slugify';
+import { resolveMediaUrl } from '@/lib/utils/config';
 import type {
   ContentBlock,
   InlineNode,
@@ -91,7 +92,7 @@ for (const block of blocks) {
     flushBuffer();
     segments.push({
       kind: 'image',
-      url: block.image.url,
+      url: resolveMediaUrl(block.image.url),
       alt: block.image.alternativeText,
       width: block.image.width,
       height: block.image.height,

@@ -1,6 +1,7 @@
 ---
 import ThemeToggle from '@/components/ui/ThemeToggle.astro';
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher.astro';
+import { resolveMediaUrl } from '@/lib/utils/config';
 import type { DocumentationSpaceSetting, DocumentationSection } from '@/lib/domain/types';
 
 interface Props {
@@ -50,7 +51,7 @@ const ctaUrl = settings?.headerLinkUrl;
     >
       {logo ? (
         <img
-          src={logo.url}
+          src={resolveMediaUrl(logo.url)}
           alt={logo.alternativeText ?? siteName}
           width={logo.width}
           height={logo.height}

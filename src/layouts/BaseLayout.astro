@@ -1,6 +1,7 @@
 ---
 import '@/styles/global.css';
 import { buildThemeCss, buildGoogleFontsUrl } from '@/lib/utils/theme';
+import { resolveMediaUrl } from '@/lib/utils/config';
 import type { DocumentationSpaceSetting } from '@/lib/domain/types';
 
 interface Props {
@@ -18,8 +19,8 @@ const themeCss = buildThemeCss(settings);
 const fontsUrl = buildGoogleFontsUrl(settings);
 const siteName = settings?.siteName ?? 'Documentation';
 const fullTitle = title !== siteName ? `${title} — ${siteName}` : title;
-const faviconUrl = settings?.favicon?.url;
-const resolvedOgImage = ogImage ?? settings?.ogDefaultImage?.url;
+const faviconUrl = resolveMediaUrl(settings?.favicon?.url);
+const resolvedOgImage = resolveMediaUrl(ogImage ?? settings?.ogDefaultImage?.url);
 ---
 
 <!doctype html>
