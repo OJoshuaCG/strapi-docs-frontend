@@ -158,6 +158,55 @@
     background-color: transparent !important;
   }
 
+  /* ── Mermaid diagrams ────────────────────────────────────────────────────── */
+  .mermaid-wrapper {
+    position: relative;
+    margin-bottom: var(--paragraph-spacing, 1rem);
+    border-radius: var(--code-border-radius, 0.5rem);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-secondary);
+    padding: 1.5rem 1rem;
+    overflow-x: auto;
+  }
+
+  .mermaid-wrapper[data-rendered="false"] .mermaid-source {
+    display: none;
+  }
+
+  .mermaid-wrapper[data-rendered="false"]::before {
+    content: '';
+    display: block;
+    min-height: 200px;
+    border-radius: calc(var(--code-border-radius, 0.5rem) * 0.5);
+    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border-color) 50%, var(--bg-secondary) 75%);
+    background-size: 200% 100%;
+    animation: mermaid-skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes mermaid-skeleton-pulse {
+    to { background-position: -200% 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mermaid-wrapper[data-rendered="false"]::before { animation: none; }
+  }
+
+  .mermaid-wrapper svg {
+    display: block;
+    min-width: fit-content;
+  }
+
+  @media (max-width: 768px) {
+    .mermaid-wrapper::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      width: 24px;
+      background: linear-gradient(to right, transparent, var(--bg-secondary));
+      pointer-events: none;
+    }
+  }
+
   /* Tables */
   .prose-docs table {
     width: 100%;

@@ -80,6 +80,11 @@ export async function renderMarkdown(body: string): Promise<RenderedMarkdown> {
     gfm: true,
     breaks: false,
     walkTokens: async (token: Token) => {
+      if (token.type === 'code' && token.lang === 'mermaid') {
+        // Mermaid diagrams are rendered client-side from their raw source;
+        // skip shiki highlighting/caching for these tokens entirely.
+        return;
+      }
       if (token.type === 'code') {
         const html = await buildCodeBlock(token.text, token.lang ?? '');
         codeCache.set(token as object, html);
@@ -87,6 +92,11 @@ export async function renderMarkdown(body: string): Promise<RenderedMarkdown> {
     },
     renderer: {
       code(token: Tokens.Code) {
+        if (token.lang === 'mermaid') {
+          return `<div class="mermaid-wrapper" data-rendered="false">
+  <pre class="mermaid-source" data-mermaid>${escapeAttr(token.text)}</pre>
+</div>`;
+        }
         return codeCache.get(token as object) ?? `<pre><code>${token.text}</code></pre>`;
       },
       heading({ tokens, depth }: Tokens.Heading) {

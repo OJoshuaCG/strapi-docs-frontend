@@ -174,3 +174,94 @@ const breadcrumbs = [
     });
   });
 </script>
+
+<script>
+  // Mermaid diagrams: lazy-loaded client-side, only when a page actually has one.
+  const mermaidWrappers = document.querySelectorAll<HTMLElement>('.mermaid-wrapper');
+
+  if (mermaidWrappers.length > 0) {
+    let mermaidApi: typeof import('mermaid')['default'] | null = null;
+
+    function resolveVar(name: string): string {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function resolveColorMix(): string {
+      const probe = document.createElement('div');
+      probe.style.position = 'absolute';
+      probe.style.visibility = 'hidden';
+      probe.style.backgroundColor = 'color-mix(in srgb, var(--color-brand-500) 12%, var(--bg-secondary))';
+      document.body.appendChild(probe);
+      const resolved = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return resolved;
+    }
+
+    function buildThemeVariables() {
+      return {
+        primaryColor: resolveColorMix(),
+        primaryTextColor: resolveVar('--text-primary'),
+        primaryBorderColor: resolveVar('--color-brand-500'),
+        nodeTextColor: resolveVar('--text-primary'),
+        lineColor: resolveVar('--text-secondary'),
+        secondaryColor: resolveVar('--bg-secondary'),
+        tertiaryColor: resolveVar('--bg-sidebar'),
+        clusterBkg: resolveVar('--bg-secondary'),
+        clusterBorder: resolveVar('--border-color'),
+        edgeLabelBackground: resolveVar('--bg-primary'),
+        titleColor: resolveVar('--text-primary'),
+        fontFamily: resolveVar('--font-sans'),
+        fontSize: '14px',
+      };
+    }
+
+    async function renderAll() {
+      if (!mermaidApi) return;
+
+      mermaidApi.initialize({
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: buildThemeVariables(),
+        securityLevel: 'strict',
+      });
+
+      const wrappers = document.querySelectorAll<HTMLElement>('.mermaid-wrapper');
+      for (let i = 0; i < wrappers.length; i++) {
+        const wrapper = wrappers[i];
+        const source = wrapper.querySelector<HTMLElement>('.mermaid-source');
+        const sourceText = source?.textContent ?? '';
+
+        try {
+          const { svg, bindFunctions } = await mermaidApi.render(`mermaid-svg-${i}`, sourceText);
+          const existingSvg = wrapper.querySelector('svg');
+          existingSvg?.remove();
+          if (source) {
+            source.insertAdjacentHTML('afterend', svg);
+          } else {
+            wrapper.insertAdjacentHTML('beforeend', svg);
+          }
+          bindFunctions?.(wrapper);
+          wrapper.dataset['rendered'] = 'true';
+        } catch (error) {
+          console.error(`Mermaid render failed for diagram ${i}:`, error);
+          const existingSvg = wrapper.querySelector('svg');
+          existingSvg?.remove();
+          const errorMsg = document.createElement('p');
+          errorMsg.style.color = 'var(--text-muted)';
+          errorMsg.textContent = 'No se pudo renderizar el diagrama.';
+          wrapper.appendChild(errorMsg);
+          wrapper.dataset['rendered'] = 'true';
+        }
+      }
+    }
+
+    import('mermaid').then((module) => {
+      mermaidApi = module.default;
+      void renderAll();
+    });
+
+    window.addEventListener('theme-change', () => {
+      void renderAll();
+    });
+  }
+</script>

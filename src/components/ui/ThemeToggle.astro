@@ -54,6 +54,7 @@
 
   function applyTheme(dark: boolean) {
     document.documentElement.classList.toggle('dark', dark);
+    window.dispatchEvent(new CustomEvent('theme-change', { detail: { dark } }));
     sun?.classList.toggle('hidden', !dark);
     moon?.classList.toggle('hidden', dark);
     localStorage.setItem('theme', dark ? 'dark' : 'light');
