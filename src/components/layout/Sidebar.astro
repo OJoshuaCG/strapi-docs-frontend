@@ -22,7 +22,7 @@ const { categories, activeCategorySlug, activeArticleSlug, locale } = Astro.prop
     const isCategoryActive = category.slug === activeCategorySlug;
 
     return (
-      <div class="mb-5">
+      <div class="mb-4">
         <!-- Category title (not clickable, it's a group label) -->
         <p
           class="px-2 mb-1 text-xs font-semibold uppercase tracking-wider"
@@ -32,16 +32,16 @@ const { categories, activeCategorySlug, activeArticleSlug, locale } = Astro.prop
         </p>
 
         <!-- Articles -->
-        <ul class="space-y-0.5">
+        <ul class="space-y-px">
           {category.articles.map((article) => {
             const isActive = isCategoryActive && article.slug === activeArticleSlug;
             return (
               <li>
                 <a
                   href={`/${locale}/${category.slug}/${article.slug}`}
-                  class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors"
+                  class="flex items-center gap-2 px-2 py-[0.3125rem] rounded-md text-[0.75rem] leading-[1.375rem] transition-colors"
                   style={isActive
-                    ? 'color: var(--color-brand-500); background-color: var(--color-brand-50); font-weight: 500;'
+                    ? 'color: var(--color-brand-500); background-color: color-mix(in srgb, var(--color-brand-500) 14%, var(--bg-sidebar)); font-weight: 500;'
                     : 'color: var(--text-secondary);'
                   }
                   aria-current={isActive ? 'page' : undefined}
