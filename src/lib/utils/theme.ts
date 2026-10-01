@@ -58,11 +58,19 @@ const defaultLayout: ThemeLayout = {
   animationEasing: 'cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
+// Drops null/undefined/'' values so cleared fields in Strapi fall back to defaults
+function definedValues<T extends object>(values: T | null | undefined): Partial<T> {
+  if (!values) return {};
+  return Object.fromEntries(
+    Object.entries(values).filter(([, v]) => v !== null && v !== undefined && v !== '')
+  ) as Partial<T>;
+}
+
 export function buildThemeCss(settings: DocumentationSpaceSetting | null): string {
-  const c = { ...defaultColors, ...settings?.colors };
-  const t = { ...defaultTypography, ...settings?.typography };
-  const s = { ...defaultSpacing, ...settings?.spacing };
-  const l = { ...defaultLayout, ...settings?.layout };
+  const c = { ...defaultColors, ...definedValues(settings?.colors) };
+  const t = { ...defaultTypography, ...definedValues(settings?.typography) };
+  const s = { ...defaultSpacing, ...definedValues(settings?.spacing) };
+  const l = { ...defaultLayout, ...definedValues(settings?.layout) };
 
   return `
     :root {
@@ -128,7 +136,7 @@ export function buildThemeCss(settings: DocumentationSpaceSetting | null): strin
 }
 
 export function buildGoogleFontsUrl(settings: DocumentationSpaceSetting | null): string {
-  const t = { ...defaultTypography, ...settings?.typography };
+  const t = { ...defaultTypography, ...definedValues(settings?.typography) };
   const families = [
     `family=${encodeURIComponent(t.fontSans)}:wght@400;500;600;700`,
     `family=${encodeURIComponent(t.fontMono)}:wght@400;500`,
