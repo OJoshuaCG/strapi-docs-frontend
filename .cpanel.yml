@@ -1,0 +1,73 @@
+---
+# cPanel Git Version Control deployment pipeline for the Astro portal.
+# Runs on "Deploy HEAD Commit". See docs/deployment.md.
+deployment:
+  tasks:
+    - |
+      set -e
+      echo "Iniciando despliegue del portal de documentación (Astro)..."
+
+      REPO_PATH="$PWD"
+
+      # ┌───────────────────────────────────────────────────────────────────────
+      # │ NODE_VERSION  → versión elegida en cPanel → Setup Node.js App.
+      # │ NODE_ACTIVATE → se deriva de la ruta de la app:
+      # │   /home/USUARIO/nodevenv/<ruta de la app relativa a HOME>/<versión>/bin/activate
+      # │ Si tu hosting usa otra ruta, reemplaza NODE_ACTIVATE por la ruta exacta
+      # │ que muestra Setup Node.js App.
+      # └───────────────────────────────────────────────────────────────────────
+      NODE_VERSION="22"
+      NODE_ACTIVATE="$HOME/nodevenv/${REPO_PATH#"$HOME"/}/$NODE_VERSION/bin/activate"
+
+      if [ ! -f "$NODE_ACTIVATE" ]; then
+        echo "ERROR: entorno Node.js no encontrado: [$NODE_ACTIVATE]"
+        echo "Crea la aplicación en cPanel → Setup Node.js App con Application root = $REPO_PATH"
+        exit 1
+      fi
+      . "$NODE_ACTIVATE"
+      cd "$REPO_PATH"
+      echo "Node.js activo: $(node --version) · npm $(npm --version)"
+
+      # ── Validar .env ANTES de compilar ──────────────────────────────────────
+      # Astro fija las variables privadas en el build: si falta una aquí, el
+      # portal queda compilado sin ella aunque después se agregue al .env.
+      # Solo se informa el NOMBRE de la variable, nunca su valor.
+      if [ ! -f .env ]; then
+        echo "ERROR: falta $REPO_PATH/.env (ver docs/deployment.md, paso 5)."
+        exit 1
+      fi
+
+      has_value() {
+        grep -Eq "^[[:space:]]*$1[[:space:]]*=[[:space:]]*[\"']?[^\"'[:space:]#]" .env
+      }
+
+      MISSING=""
+      for VAR in SITE_URL STRAPI_URL DOCUMENTATION_SPACE_SLUG; do
+        has_value "$VAR" || MISSING="$MISSING $VAR"
+      done
+      if [ -n "$MISSING" ]; then
+        echo "ERROR: variables requeridas ausentes o vacías en .env:$MISSING"
+        exit 1
+      fi
+
+      for VAR in STRAPI_API_TOKEN PREVIEW_SECRET; do
+        has_value "$VAR" || echo "AVISO: $VAR vacía — el Live Preview de Strapi no funcionará."
+      done
+
+      # ── Dependencias y build ────────────────────────────────────────────────
+      echo "Instalando dependencias (--omit=dev)..."
+      npm install --omit=dev
+
+      echo "Compilando (npm run build)..."
+      rm -rf "$REPO_PATH/dist"
+      npm run build
+
+      if [ ! -f "$REPO_PATH/dist/server/entry.mjs" ]; then
+        echo "ERROR: dist/server/entry.mjs no existe — el build falló."
+        exit 1
+      fi
+
+      # ── Reiniciar Passenger ─────────────────────────────────────────────────
+      mkdir -p "$REPO_PATH/tmp"
+      touch "$REPO_PATH/tmp/restart.txt"
+      echo "Despliegue completado exitosamente."
