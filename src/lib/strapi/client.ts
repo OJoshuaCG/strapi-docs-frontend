@@ -197,6 +197,29 @@ export async function getArticleBySlug(
   return res.data[0] ?? null;
 }
 
+/** Artículo por documentId para Live Preview. Siempre envía el token:
+ *  el backend exige `Authorization: Bearer` para `status=draft`. */
+export async function getArticleByDocumentId(
+  documentId: string,
+  locale: string,
+  status: 'draft' | 'published' = 'draft'
+): Promise<DocumentationArticle | null> {
+  const res = await strapiGet<StrapiListResponse<DocumentationArticle>>(
+    '/api/documentation-articles',
+    {
+      params: {
+        space: config.spaceSlug,
+        locale,
+        'filters[documentId][$eq]': documentId,
+        ...articleFullPopulate,
+        status,
+      },
+      withToken: true,
+    }
+  );
+  return res.data[0] ?? null;
+}
+
 export async function getArticlesByCategory(
   categorySlug: string,
   locale: string

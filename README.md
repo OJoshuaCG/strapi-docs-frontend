@@ -42,7 +42,9 @@ node dist/server/entry.mjs
 | `SUPPORTED_LOCALES` | Idiomas disponibles separados por coma (`es,en`) |
 | `DEFAULT_LOCALE` | Locale por defecto (`es`) |
 
-> La variable `STRAPI_API_TOKEN` es opcional; solo se necesita para acceder a contenido en borrador (Live Preview).
+> `STRAPI_API_TOKEN` es opcional, pero el backend lo exige para leer borradores (`?status=draft`), por lo que Live Preview de borradores lo necesita.
+>
+> `PREVIEW_SECRET` habilita la ruta de Live Preview `/api/preview` (mismo valor que en el backend) y `SITE_URL` define la URL canónica en tiempo de build. Ver [docs/env-variables.md](docs/env-variables.md).
 
 ## Documentación completa
 

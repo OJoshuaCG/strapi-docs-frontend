@@ -37,6 +37,9 @@ getCategoriesWithArticles(locale, sectionSlug?): Promise<SidebarCategory[]>
 // Artículo completo por slug (para renderizar la página)
 getArticleBySlug(slug, locale, draft?): Promise<DocumentationArticle | null>
 
+// Artículo completo por documentId (Live Preview; siempre envía el token)
+getArticleByDocumentId(documentId, locale, status?): Promise<DocumentationArticle | null>
+
 // Artículos de una categoría (para navegación prev/next)
 getArticlesByCategory(categorySlug, locale): Promise<DocumentationArticle[]>
 
@@ -80,6 +83,25 @@ El parámetro `?locale=` se pasa explícitamente en cada función porque es nece
 
 Los campos **compartidos entre locales** (no cambian por idioma) son: `order`, `icon`, `version`, `ogImage`.
 
+## Live Preview
+
+El admin de Strapi genera la URL de vista previa de los artículos y la carga en un iframe:
+
+```
+/api/preview?secret=<PREVIEW_SECRET>&documentId=<id>&locale=<locale>&status=draft|published
+```
+
+La ruta `src/pages/api/preview.astro`:
+
+- Compara `secret` con `PREVIEW_SECRET` (hash SHA-256 + comparación en tiempo constante). Responde `403` si falta, no coincide o `PREVIEW_SECRET` no está configurado.
+- Responde `400` si falta `documentId` o si `locale`/`status` no son válidos. `status` por defecto es `draft`.
+- Obtiene el artículo con `getArticleByDocumentId` y responde `404` si no existe.
+- Renderiza el mismo componente que la página pública (`src/components/pages/ArticlePage.astro`) con `noindex` y un indicador de vista previa.
+- Envía `Cache-Control: private, no-store`, `X-Robots-Tag: noindex, nofollow` y `Content-Security-Policy: frame-ancestors 'self' <origen de STRAPI_URL>`.
+- Recarga la página cuando recibe un mensaje `{ type: 'strapiUpdate' }` desde el origen de Strapi.
+
+**Borradores requieren token:** el backend responde `401` a `?status=draft` sin `Authorization: Bearer <token>`. Configura `STRAPI_API_TOKEN` (Read-only) para que la vista previa de borradores funcione.
+
 ## Strapi v5 vs v4
 
 En Strapi v5 los datos están **directamente** en el objeto (sin wrapper `attributes`). Ejemplo:
@@ -114,6 +136,8 @@ No se requiere cambio de código.
 | `400 El parámetro space es obligatorio` | Bug en el cliente | Verificar que `config.spaceSlug` no está vacío |
 | `400 El espacio no existe o está inactivo` | Slug incorrecto | Confirmar el slug exacto en Strapi |
 | `data: []` aunque hay contenido | Artículo en Draft | Publicarlo en Strapi, o usar token + `?status=draft` |
+| `401` con `?status=draft` | Falta el token | Configurar `STRAPI_API_TOKEN` |
+| `403` en `/api/preview` | Secreto ausente o distinto | Usar el mismo `PREVIEW_SECRET` en backend y portal |
 | `data: []` para un locale | Traducción no publicada | Publicar el contenido en ese locale en Strapi |
 | `403 Forbidden` | Permisos del rol Public | En Strapi: Settings → Users & Permissions → Public → habilitar `find` y `findOne` |
 | Error 500 en el portal | Strapi inaccesible | Verificar que `STRAPI_URL` es correcta y el CMS está activo |

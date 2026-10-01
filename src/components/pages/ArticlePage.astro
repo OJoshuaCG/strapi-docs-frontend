@@ -1,0 +1,176 @@
+---
+import DocsLayout from '@/layouts/DocsLayout.astro';
+import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
+import ArticleNav from '@/components/ui/ArticleNav.astro';
+import { getArticlesByCategory } from '@/lib/strapi/client';
+import { renderMarkdown } from '@/lib/utils/markdown';
+import type { CommonPageData } from '@/lib/utils/page-data';
+import type { DocumentationArticle } from '@/lib/domain/types';
+
+interface Props {
+  article: DocumentationArticle;
+  locale: string;
+  categorySlug: string;
+  common: CommonPageData;
+  /** Live Preview mode: noindex, no canonical, visible preview badge */
+  preview?: boolean;
+}
+
+const { article, locale, categorySlug, common, preview = false } = Astro.props;
+
+// Markdown → HTML + TOC (built from the rendered headings)
+const { html: articleHtml, toc } = article.body
+  ? await renderMarkdown(article.body)
+  : { html: '', toc: [] };
+
+const sectionSlug = article.category?.documentation_section?.slug;
+const { settings, sections, sidebarCategories, supportedLocales } = common;
+
+// Article navigation: prev/next within the same category
+const siblingArticles = categorySlug
+  ? await getArticlesByCategory(categorySlug, locale).catch(() => [])
+  : [];
+const currentIndex = siblingArticles.findIndex((a) => a.slug === article.slug);
+const prevArticle = currentIndex > 0 ? siblingArticles[currentIndex - 1] : null;
+const nextArticle =
+  currentIndex >= 0 && currentIndex < siblingArticles.length - 1 ? siblingArticles[currentIndex + 1] : null;
+
+// SEO
+const pageTitle = article.seoTitle ?? article.title;
+const pageDescription = article.seoDescription ?? article.excerpt ?? undefined;
+const ogImage = article.ogImage?.url ?? settings?.ogDefaultImage?.url;
+const canonicalUrl = preview
+  ? undefined
+  : Astro.site
+    ? new URL(Astro.url.pathname, Astro.site).toString()
+    : Astro.url.href;
+
+// Breadcrumbs
+const breadcrumbs = [
+  { label: settings?.siteName ?? 'Docs', href: `/${locale}` },
+  ...(article.category?.documentation_section
+    ? [{ label: article.category.documentation_section.name, href: `/${locale}?section=${sectionSlug}` }]
+    : []),
+  ...(article.category
+    ? [{ label: article.category.name }]
+    : []),
+  { label: article.title },
+];
+---
+
+<DocsLayout
+  title={pageTitle}
+  description={pageDescription}
+  ogImage={ogImage}
+  canonicalUrl={canonicalUrl}
+  settings={settings}
+  sections={sections}
+  sidebarCategories={sidebarCategories}
+  activeSectionSlug={sectionSlug}
+  activeCategorySlug={categorySlug}
+  activeArticleSlug={article.slug}
+  toc={toc}
+  locale={locale}
+  supportedLocales={supportedLocales}
+  noindex={preview}
+>
+  <!-- Breadcrumbs -->
+  <Breadcrumbs items={breadcrumbs} />
+
+  <!-- Article header -->
+  <header class="mb-8">
+    <div class="flex items-start gap-3 flex-wrap">
+      <h1
+        class="text-3xl font-bold leading-tight flex-1"
+        style="color: var(--text-primary); line-height: var(--heading-line-height, 1.25);"
+      >
+        {article.title}
+      </h1>
+
+      {preview && (
+        <span
+          class="shrink-0 mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+          style="
+            border-color: var(--border-color);
+            color: var(--text-secondary);
+            background-color: var(--bg-secondary);
+          "
+        >
+          {article.publishedAt ? 'Vista previa' : 'Vista previa / borrador'}
+        </span>
+      )}
+
+      {article.version && (
+        <span
+          class="shrink-0 mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+          style="
+            border-color: var(--color-brand-500);
+            color: var(--color-brand-500);
+            background-color: var(--color-brand-50);
+          "
+        >
+          v{article.version}
+        </span>
+      )}
+    </div>
+
+    {article.excerpt && (
+      <p class="mt-3 text-lg" style="color: var(--text-secondary);">
+        {article.excerpt}
+      </p>
+    )}
+
+    <!-- Updated date -->
+    <p class="mt-3 text-xs" style="color: var(--text-muted);">
+      Updated:{' '}
+      <time datetime={article.updatedAt}>
+        {new Date(article.updatedAt).toLocaleDateString(locale, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })}
+      </time>
+    </p>
+  </header>
+
+  <!-- Content -->
+  {articleHtml ? (
+    <div class="prose-docs" set:html={articleHtml} />
+  ) : (
+    <div
+      class="py-12 text-center rounded-lg border"
+      style="border-color: var(--border-color); color: var(--text-muted);"
+    >
+      This article has no content yet.
+    </div>
+  )}
+
+  <!-- Prev / Next navigation -->
+  <ArticleNav
+    prev={prevArticle
+      ? { title: prevArticle.title, href: `/${locale}/${categorySlug}/${prevArticle.slug}` }
+      : undefined}
+    next={nextArticle
+      ? { title: nextArticle.title, href: `/${locale}/${categorySlug}/${nextArticle.slug}` }
+      : undefined}
+  />
+
+  <!-- Route-specific extras (e.g. Live Preview reload script) -->
+  <slot />
+</DocsLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const code = btn.dataset['code'] ?? '';
+      try {
+        await navigator.clipboard.writeText(code);
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      } catch {
+        btn.textContent = 'Error';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      }
+    });
+  });
+</script>

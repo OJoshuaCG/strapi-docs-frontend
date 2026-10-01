@@ -57,6 +57,8 @@ Para generar el token: **Strapi Admin → Settings → API Tokens → Create new
 
 Si se deja vacío, el portal solo muestra contenido publicado, que es el comportamiento correcto para producción.
 
+> El backend responde `401` a cualquier petición con `?status=draft` que no incluya `Authorization: Bearer <token>`. Por eso Live Preview de borradores requiere este token.
+
 ---
 
 ### `SUPPORTED_LOCALES` — Obligatoria
@@ -83,6 +85,30 @@ DEFAULT_LOCALE=es
 
 ---
 
+### `PREVIEW_SECRET` — Opcional
+
+Secreto compartido con Strapi para la ruta de Live Preview `/api/preview`. Debe tener **el mismo valor** que `PREVIEW_SECRET` en el backend.
+
+```env
+PREVIEW_SECRET=un-valor-largo-y-aleatorio
+```
+
+Si está vacío, `/api/preview` responde `403` y Live Preview queda deshabilitado. Se lee en tiempo de ejecución (`process.env`), por lo que no queda incrustado en el build. Ver [strapi-integration.md](strapi-integration.md#live-preview).
+
+---
+
+### `SITE_URL` — Recomendada
+
+URL pública del portal, sin slash final. `astro.config.mjs` la usa como `site` para generar las URLs canónicas.
+
+```env
+SITE_URL=https://docs.tudominio.com
+```
+
+Se lee **en tiempo de build**: si cambia, hay que volver a compilar.
+
+---
+
 ## Ejemplo completo `.env`
 
 ```env
@@ -92,6 +118,12 @@ DOCUMENTATION_SPACE_SLUG=omnicanal
 
 # Token opcional (borrar o dejar vacío en producción)
 STRAPI_API_TOKEN=
+
+# Live Preview (mismo valor que en el backend)
+PREVIEW_SECRET=
+
+# URL pública del portal (tiempo de build)
+SITE_URL=https://docs.tudominio.com
 
 # Idiomas
 SUPPORTED_LOCALES=es,en

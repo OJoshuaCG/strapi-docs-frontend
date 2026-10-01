@@ -11,9 +11,10 @@ interface Props {
   canonicalUrl?: string;
   settings: DocumentationSpaceSetting | null;
   locale?: string;
+  noindex?: boolean;
 }
 
-const { title, description, ogImage, canonicalUrl, settings, locale = 'es' } = Astro.props;
+const { title, description, ogImage, canonicalUrl, settings, locale = 'es', noindex = false } = Astro.props;
 
 const themeCss = buildThemeCss(settings);
 const fontsUrl = buildGoogleFontsUrl(settings);
@@ -33,6 +34,7 @@ const resolvedOgImage = resolveMediaUrl(ogImage ?? settings?.ogDefaultImage?.url
     <title>{fullTitle}</title>
     {description && <meta name="description" content={description} />}
 
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
 
     <!-- Open Graph -->

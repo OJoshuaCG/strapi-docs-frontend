@@ -1,6 +1,7 @@
-import { Marked } from 'marked';
+import { Marked, type Token, type Tokens } from 'marked';
 import { codeToHtml } from 'shiki';
 import { slugify } from './slugify';
+import type { TocEntry } from '@/lib/domain/types';
 
 const langMap: Record<string, string> = {
   js: 'javascript',
@@ -54,30 +55,52 @@ async function buildCodeBlock(raw: string, lang: string): Promise<string> {
 }
 
 // Pre-compute code blocks during walkTokens (async pass before rendering)
-type MarkedToken = { type: string; text: string; lang?: string };
 const codeCache = new WeakMap<object, string>();
 
-export async function renderMarkdown(body: string): Promise<string> {
+export type RenderedMarkdown = {
+  html: string;
+  toc: TocEntry[];
+};
+
+export async function renderMarkdown(body: string): Promise<RenderedMarkdown> {
+  // Per-render state: TOC entries and used heading ids (for unique anchors)
+  const toc: TocEntry[] = [];
+  const usedIds = new Set<string>();
+
+  function uniqueId(base: string): string {
+    const key = base || 'section';
+    let id = key;
+    for (let n = 2; usedIds.has(id); n++) id = `${key}-${n}`;
+    usedIds.add(id);
+    return id;
+  }
+
   const marked = new Marked({
     async: true,
     gfm: true,
     breaks: false,
-    walkTokens: async (token: MarkedToken) => {
+    walkTokens: async (token: Token) => {
       if (token.type === 'code') {
         const html = await buildCodeBlock(token.text, token.lang ?? '');
         codeCache.set(token as object, html);
       }
     },
     renderer: {
-      code(token: MarkedToken) {
+      code(token: Tokens.Code) {
         return codeCache.get(token as object) ?? `<pre><code>${token.text}</code></pre>`;
       },
-      heading({ text, depth }: { text: string; depth: number }) {
-        const id = slugify(stripHtml(text));
-        return `<h${depth} id="${id}">${text}</h${depth}>\n`;
+      heading({ tokens, depth }: Tokens.Heading) {
+        const html = this.parser.parseInline(tokens);
+        const text = stripHtml(this.parser.parseInline(tokens, this.parser.textRenderer)).trim();
+        const id = uniqueId(slugify(text));
+        if (depth >= 2) {
+          toc.push({ level: depth as TocEntry['level'], text, id });
+        }
+        return `<h${depth} id="${id}">${html}</h${depth}>\n`;
       },
     },
   });
 
-  return (await marked.parse(body)) as string;
+  const html = (await marked.parse(body)) as string;
+  return { html, toc };
 }

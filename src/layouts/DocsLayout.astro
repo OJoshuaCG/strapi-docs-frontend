@@ -25,6 +25,7 @@ interface Props {
   toc?: TocEntry[];
   locale: string;
   supportedLocales: string[];
+  noindex?: boolean;
 }
 
 const {
@@ -41,6 +42,7 @@ const {
   toc = [],
   locale,
   supportedLocales,
+  noindex = false,
 } = Astro.props;
 ---
 
@@ -51,6 +53,7 @@ const {
   canonicalUrl={canonicalUrl}
   settings={settings}
   locale={locale}
+  noindex={noindex}
 >
   <div class="flex flex-col min-h-screen" style="background-color: var(--bg-primary);">
     <Header

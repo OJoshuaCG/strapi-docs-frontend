@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly STRAPI_API_TOKEN: string;
   readonly SUPPORTED_LOCALES: string;
   readonly DEFAULT_LOCALE: string;
+  readonly PREVIEW_SECRET?: string;
+  readonly SITE_URL?: string;
 }
 
 interface ImportMeta {

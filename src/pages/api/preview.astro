@@ -1,0 +1,110 @@
+---
+// Live Preview de Strapi: el admin embebe esta ruta en un iframe con
+// /api/preview?secret=<PREVIEW_SECRET>&documentId=<id>&locale=<locale>&status=draft|published
+import ArticlePage from '@/components/pages/ArticlePage.astro';
+import { loadCommonData } from '@/lib/utils/page-data';
+import { config, getArticleByDocumentId } from '@/lib/strapi/client';
+import { isValidLocale, appConfig } from '@/lib/utils/config';
+
+export const prerender = false;
+
+// Read at request time (process.env) so the secret is not frozen into the build output.
+// The import.meta.env fallback is dev-only (Vite loads .env there, not into process.env);
+// in production builds DEV is false and the fallback is dropped. Typed locally because
+// @types/node is not installed.
+const runtimeEnv =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+const previewSecret =
+  runtimeEnv.PREVIEW_SECRET ?? (import.meta.env.DEV ? import.meta.env.PREVIEW_SECRET : undefined) ?? '';
+const strapiOrigin = new URL(config.strapiUrl).origin;
+
+const previewHeaders = {
+  'Cache-Control': 'private, no-store, max-age=0',
+  'X-Robots-Tag': 'noindex, nofollow',
+  'Content-Security-Policy': `frame-ancestors 'self' ${strapiOrigin}`,
+};
+
+function errorResponse(status: number): Response {
+  return new Response(null, { status, headers: previewHeaders });
+}
+
+async function sha256(value: string): Promise<Uint8Array> {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+}
+
+// Hash both values (equal length) and compare in constant time,
+// equivalent to node:crypto timingSafeEqual
+async function secretMatches(provided: string, expected: string): Promise<boolean> {
+  const [a, b] = await Promise.all([sha256(provided), sha256(expected)]);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+const params = Astro.url.searchParams;
+const secret = params.get('secret') ?? '';
+
+if (!previewSecret || !secret || !(await secretMatches(secret, previewSecret))) {
+  return errorResponse(403);
+}
+
+const documentId = params.get('documentId');
+if (!documentId) {
+  return errorResponse(400);
+}
+
+const locale = params.get('locale') || appConfig.defaultLocale;
+if (!isValidLocale(locale)) {
+  return errorResponse(400);
+}
+
+const rawStatus = params.get('status') || 'draft';
+if (rawStatus !== 'draft' && rawStatus !== 'published') {
+  return errorResponse(400);
+}
+const status = rawStatus;
+
+let article;
+try {
+  article = await getArticleByDocumentId(documentId, locale, status);
+} catch (err) {
+  console.error('[portal] Preview: failed to fetch article:', err);
+  return errorResponse(500);
+}
+
+if (!article) {
+  return errorResponse(404);
+}
+
+const sectionSlug = article.category?.documentation_section?.slug;
+
+let common;
+try {
+  common = await loadCommonData(locale, sectionSlug);
+} catch (err) {
+  console.error('[portal] Preview: failed to load common data:', err);
+  return errorResponse(500);
+}
+
+for (const [key, value] of Object.entries(previewHeaders)) {
+  Astro.response.headers.set(key, value);
+}
+---
+
+<ArticlePage
+  article={article}
+  locale={locale}
+  categorySlug={article.category?.slug ?? ''}
+  common={common}
+  preview
+>
+  <!-- Reload when Strapi notifies a content change -->
+  <script is:inline define:vars={{ strapiOrigin }}>
+    window.addEventListener('message', (event) => {
+      if (event.origin !== strapiOrigin) return;
+      if (event.data && event.data.type === 'strapiUpdate') {
+        window.location.reload();
+      }
+    });
+  </script>
+</ArticlePage>
