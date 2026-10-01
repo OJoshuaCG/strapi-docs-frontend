@@ -32,9 +32,26 @@ dist/
 
 El servidor Astro sirve **tanto las páginas SSR como los assets estáticos** desde el mismo proceso Node.js. No se necesita configuración adicional de Apache para los assets.
 
-### Variable de entorno en tiempo de compilación
+### Variables de entorno: se fijan en el build
 
-`SITE_URL` es leída en `astro.config.mjs` durante el build para configurar la URL canónica del sitio. Debe estar disponible **antes** de ejecutar `npm run build`. El resto de las variables son de tiempo de ejecución (se leen al servir cada petición).
+Astro 5 **inyecta en el código compilado** las variables privadas que el portal lee con `import.meta.env`. Su valor queda fijo en `dist/` en el momento de `npm run build`:
+
+| Variable | Cuándo se lee | Si cambia en `.env`… |
+|---|---|---|
+| `SITE_URL` | Build (`astro.config.mjs`, vía `loadEnv`) | Recompilar |
+| `STRAPI_URL` | Build | Recompilar |
+| `DOCUMENTATION_SPACE_SLUG` | Build | Recompilar |
+| `STRAPI_API_TOKEN` | Build | Recompilar |
+| `SUPPORTED_LOCALES`, `DEFAULT_LOCALE` | Build | Recompilar |
+| `PREVIEW_SECRET` | **Runtime** (lo carga `server.js` en `process.env`) | Reiniciar |
+
+Consecuencias prácticas:
+
+- **El `.env` debe existir y estar completo en el servidor antes de compilar.** Si una variable falta durante el build, el portal queda compilado sin ella aunque después se agregue. Por ejemplo, sin `STRAPI_API_TOKEN` el código que envía el token se elimina del bundle y el Live Preview responde `401`.
+- **Cambiar el `.env` requiere recompilar** (volver a desplegar), no basta con reiniciar.
+- Los valores quedan en `dist/server/` (código del servidor), **no** en el JavaScript que recibe el navegador. Aun así, trata `dist/` como sensible.
+
+El pipeline `.cpanel.yml` valida las variables requeridas **antes** de compilar y aborta el despliegue si falta alguna (sin mostrar sus valores).
 
 ---
 
@@ -42,12 +59,12 @@ El servidor Astro sirve **tanto las páginas SSR como los assets estáticos** de
 
 1. [Requisitos previos](#1-requisitos-previos)
 2. [Crear subdominio en cPanel](#2-crear-subdominio-en-cpanel)
-3. [Preparar los archivos localmente](#3-preparar-los-archivos-localmente)
-4. [Subir los archivos al servidor](#4-subir-los-archivos-al-servidor)
+3. [Conectar el repositorio con Git Version Control](#3-conectar-el-repositorio-con-git-version-control)
+4. [Verificar la estructura en el servidor](#4-verificar-la-estructura-en-el-servidor)
 5. [Crear el archivo .env en el servidor](#5-crear-el-archivo-env-en-el-servidor)
-6. [Crear el archivo de inicio (server.js)](#6-crear-el-archivo-de-inicio-serverjs)
+6. [Archivo de inicio (server.js)](#6-archivo-de-inicio-serverjs)
 7. [Configurar la aplicación Node.js en cPanel](#7-configurar-la-aplicación-nodejs-en-cpanel)
-8. [Instalar dependencias y compilar](#8-instalar-dependencias-y-compilar)
+8. [Desplegar con .cpanel.yml](#8-desplegar-con-cpanelyml)
 9. [Iniciar la aplicación](#9-iniciar-la-aplicación)
 10. [Verificación final](#10-verificación-final)
 11. [Configurar Apache (.htaccess) — restricciones de acceso](#11-configurar-apache-htaccess--restricciones-de-acceso)
@@ -87,59 +104,31 @@ El portal necesita un dominio o subdominio propio. Se recomienda un subdominio d
 
 ---
 
-## 3. Preparar los archivos localmente
+## 3. Conectar el repositorio con Git Version Control
 
-Antes de subir al servidor, prepara un paquete limpio del código fuente.
+El código llega al servidor con **cPanel → Files → Git™ Version Control**. Cada despliegue ejecuta el pipeline definido en [`.cpanel.yml`](../.cpanel.yml).
 
-### 3.1 Archivos que se deben subir
+1. En cPanel, ve a **Files** → **Git™ Version Control** → **Create**.
+2. Configura:
+   - **Clone URL:** la URL del repositorio (SSH recomendado; agrega la clave de despliegue del servidor en el proveedor Git).
+   - **Repository Path:** `/home/tuusuario/docs.tudominio.com` (el mismo directorio del subdominio).
+   - **Repository Name:** `strapi-docs-frontend`.
+3. Haz clic en **Create**. cPanel clona el repositorio.
+4. En **Manage** → **Basic Information**, selecciona la rama a desplegar (normalmente `main`).
 
-Solo necesitas los archivos del repositorio. **No incluyas**:
-- `node_modules/` (se instala en el servidor)
-- `dist/` (se compila en el servidor)
-- `.env` (se crea directamente en el servidor)
-
-### 3.2 Crear el archivo comprimido con git
-
-Usa `git archive` — incluye exactamente los archivos rastreados por git y omite automáticamente todo lo que está en `.gitignore` (`node_modules/`, `dist/`, `.env`, etc.):
-
-```bash
-# Desde la raíz del repositorio (funciona en Windows, Mac y Linux)
-git archive HEAD --output=docs-portal.zip
-```
-
-El archivo `docs-portal.zip` se crea en la raíz del repositorio.
+> cPanel solo despliega si el working tree del servidor no tiene cambios **commiteables** pendientes. No edites archivos versionados directamente en el servidor; `.env`, `node_modules/`, `dist/` y `tmp/` están en `.gitignore` y no afectan.
 
 ---
 
-## 4. Subir los archivos al servidor
+## 4. Verificar la estructura en el servidor
 
-### Opción A — File Manager de cPanel
-
-1. En cPanel, ve a **Files** → **File Manager**.
-2. Navega a `/home/tuusuario/docs.tudominio.com/`.
-3. Haz clic en **Upload** y sube el archivo `docs-portal.zip`.
-4. Una vez subido, haz clic derecho sobre el zip → **Extract**. Extrae en la misma carpeta.
-5. Borra el archivo zip después de extraer.
-
-### Opción B — FTP/SFTP (recomendado)
-
-Usa un cliente FTP como FileZilla o WinSCP:
-
-- **Host:** `tudominio.com`
-- **Usuario:** tu usuario cPanel
-- **Contraseña:** tu contraseña cPanel
-- **Puerto:** 22 (SFTP — más seguro) o 21 (FTP)
-- **Directorio remoto:** `/home/tuusuario/docs.tudominio.com/`
-
-### Verificar la estructura en el servidor
-
-Después de subir, la estructura debe verse exactamente así:
+Después de clonar, la estructura debe verse así:
 
 ```
 docs.tudominio.com/
+├── .cpanel.yml        ← pipeline de despliegue
+├── server.js          ← archivo de inicio de Passenger (versionado)
 ├── src/
-│   ├── lib/
-│   └── pages/
 ├── docs/
 ├── public/
 ├── astro.config.mjs
@@ -173,9 +162,14 @@ STRAPI_URL=https://cms.tudominio.com
 # Slug del documentation-space que renderiza este portal
 DOCUMENTATION_SPACE_SLUG=mi-espacio
 
-# Token de API Read-Only (dejar vacío para contenido publicado)
-# Solo necesario para Live Preview o acceso a borradores
+# Token de API Read-Only. Obligatorio para Live Preview: el backend exige
+# Authorization para leer borradores (?status=draft → 401 sin token).
 STRAPI_API_TOKEN=
+
+# ─── Live Preview ─────────────────────────────────────────────────────────────
+# Debe ser EXACTAMENTE el mismo valor que PREVIEW_SECRET en el .env del backend.
+# Se lee en runtime: cambiarlo solo requiere reiniciar la app.
+PREVIEW_SECRET=
 
 # ─── Localización ─────────────────────────────────────────────────────────────
 # Locales disponibles, en el orden en que aparecen en el selector
@@ -191,56 +185,17 @@ DEFAULT_LOCALE=es
 
 Guarda con `Ctrl+O`, `Enter`, `Ctrl+X`.
 
-> **`SITE_URL`** es la única variable que Astro lee en tiempo de compilación (en `astro.config.mjs`). Debe tener el valor correcto antes de ejecutar `npm run build`.
+> **Todas las variables salvo `PREVIEW_SECRET` se fijan en el build** (ver [Variables de entorno](#variables-de-entorno-se-fijan-en-el-build)). Crea el `.env` completo **antes** del primer despliegue.
 
 ---
 
-## 6. Crear el archivo de inicio (server.js)
+## 6. Archivo de inicio (server.js)
 
-Passenger (el gestor de Node.js de cPanel) no carga el archivo `.env` automáticamente. Por eso se crea un `server.js` que lo lee antes de arrancar el servidor Astro.
+Passenger (el gestor de Node.js de cPanel) no carga el archivo `.env` automáticamente. El repositorio incluye un [`server.js`](../server.js) que lo lee, carga las variables en `process.env` (sin pisar las que ya existan) y arranca `dist/server/entry.mjs`.
 
-Debido a que el proyecto tiene `"type": "module"` en `package.json`, este archivo es automáticamente tratado como ESM — no se necesita la extensión `.mjs`.
+No hay que crearlo a mano: llega con el repositorio.
 
-```bash
-nano ~/docs.tudominio.com/server.js
-```
-
-Pega exactamente este contenido:
-
-```js
-import { readFileSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-// Cargar .env antes de arrancar el servidor Astro.
-// Passenger no lo carga automáticamente.
-const envPath = resolve(__dirname, '.env');
-if (existsSync(envPath)) {
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eq = trimmed.indexOf('=');
-    if (eq === -1) continue;
-    const key = trimmed.slice(0, eq).trim();
-    const val = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
-    if (!(key in process.env)) process.env[key] = val;
-  }
-} else {
-  console.warn('[server.js] .env no encontrado en:', envPath);
-}
-
-// Iniciar el servidor Astro generado por el build
-import('./dist/server/entry.mjs').catch((err) => {
-  console.error('[server.js] Error al iniciar el portal Astro:', err);
-  process.exit(1);
-});
-```
-
-Guarda con `Ctrl+O`, `Enter`, `Ctrl+X`.
-
-> Este archivo solo se ejecuta en producción en el servidor. No lo modifiques en el repositorio local — pertenece al servidor.
+> **Migración desde la instalación manual:** si el servidor ya tenía un `server.js` creado a mano (sin versionar), **bórralo antes del primer despliegue con Git** (`rm ~/docs.tudominio.com/server.js`). Si no, git no puede escribir la versión del repositorio y el clon/actualización falla.
 
 ---
 
@@ -272,29 +227,41 @@ Copia ese comando exacto — lo necesitas en el siguiente paso.
 
 ---
 
-## 8. Instalar dependencias y compilar
+## 8. Desplegar con .cpanel.yml
 
-En la **Terminal de cPanel**, activa el entorno y ejecuta los comandos en orden:
+En cPanel → **Git™ Version Control** → **Manage** → pestaña **Pull or Deploy**:
 
-```bash
-# 1. Activar el entorno virtual (usa el comando copiado en el paso 7)
-source /home/tuusuario/nodevenv/docs.tudominio.com/22/bin/activate && cd /home/tuusuario/docs.tudominio.com
+1. **Update from Remote** — trae los últimos commits de la rama.
+2. **Deploy HEAD Commit** — ejecuta `.cpanel.yml`.
 
-# 2. Verificar versión de Node.js
-node --version   # debe mostrar v22.x.x
+El pipeline hace, en orden:
 
-# 3. Instalar dependencias
-npm install --omit=dev
+| Paso | Qué hace | Si falla |
+|---|---|---|
+| Activar Node.js | Deriva el nodevenv de la ruta de la app: `~/nodevenv/<ruta>/22/bin/activate` | Crea la app en **Setup Node.js App** (paso 7) o ajusta `NODE_VERSION`/`NODE_ACTIVATE` en `.cpanel.yml` |
+| Validar `.env` | Exige `SITE_URL`, `STRAPI_URL`, `DOCUMENTATION_SPACE_SLUG`; avisa si faltan `STRAPI_API_TOKEN` o `PREVIEW_SECRET` | Completa el `.env` (paso 5) y vuelve a desplegar |
+| Dependencias | `npm install --omit=dev` | Revisa el log del despliegue |
+| Build | Borra `dist/` y ejecuta `npm run build` | Revisa el log; verifica memoria disponible del plan |
+| Reinicio | `touch tmp/restart.txt` (Passenger reinicia la app) | — |
 
-# 4. Compilar el portal → crea dist/
-npm run build
-```
+El log de cada despliegue aparece en la misma pestaña. Debe terminar en `Despliegue completado exitosamente.`
 
-La compilación puede tardar entre 30 segundos y 2 minutos dependiendo del servidor.
+> **Versión de Node.js:** el pipeline usa `NODE_VERSION="22"`. Si en **Setup Node.js App** elegiste otra versión, cámbiala en `.cpanel.yml`.
 
 ### ¿Por qué `--omit=dev`?
 
 El único devDependency del proyecto es `typescript`. Astro incluye su propio compilador de TypeScript internamente, por lo que omitir las devDependencies no afecta el build.
+
+### Despliegue manual (solo como respaldo)
+
+Si el pipeline falla y necesitas compilar a mano, desde la **Terminal** de cPanel:
+
+```bash
+source /home/tuusuario/nodevenv/docs.tudominio.com/22/bin/activate && cd /home/tuusuario/docs.tudominio.com
+npm install --omit=dev
+rm -rf dist && npm run build
+mkdir -p tmp && touch tmp/restart.txt
+```
 
 ### Verificar que la compilación fue exitosa
 
@@ -328,6 +295,8 @@ Abre el subdominio en tu navegador: `https://docs.tudominio.com`
 - [ ] `STRAPI_URL` tiene la URL exacta del backend (sin trailing slash)
 - [ ] `DOCUMENTATION_SPACE_SLUG` coincide con el slug del space en Strapi
 - [ ] `SUPPORTED_LOCALES` y `DEFAULT_LOCALE` son correctos
+- [ ] `STRAPI_API_TOKEN` y `PREVIEW_SECRET` configurados (si se usa Live Preview; `PREVIEW_SECRET` igual al del backend)
+- [ ] El último despliegue terminó en `Despliegue completado exitosamente.`
 - [ ] `dist/server/entry.mjs` existe (compilación exitosa)
 - [ ] El portal carga correctamente en el navegador
 - [ ] El contenido de Strapi se muestra (artículos, categorías)
@@ -340,8 +309,9 @@ Abre el subdominio en tu navegador: `https://docs.tudominio.com`
 Si el portal carga pero no muestra contenido, verifica que el servidor puede alcanzar a Strapi:
 
 ```bash
-curl https://cms.tudominio.com/api/documentation-categories
+curl "https://cms.tudominio.com/api/documentation-categories?space=mi-espacio"
 # Esperado: {"data":[...],"meta":{...}}
+# Sin ?space= el backend responde 400 (el parámetro es obligatorio).
 ```
 
 Si retorna un error de conexión, el servidor de cPanel no puede alcanzar al backend. Verifica que Strapi esté corriendo y que no haya restricciones de firewall.
@@ -425,37 +395,21 @@ RewriteRule ^ - [F,L]
 
 ## 12. Actualizar el frontend
 
-### 12.1 Subir los cambios
+### 12.1 Cambios de código
 
-1. Modifica los archivos en tu máquina local dentro del repositorio.
-2. Sube solo los archivos modificados al servidor vía FTP/SFTP o File Manager.
-   - **No** sobreescribas `.env`, `node_modules/` ni `dist/`.
-   - `server.js` solo existe en el servidor, no en el repositorio — no lo toques.
+1. Haz commit y push de los cambios a la rama que despliega cPanel.
+2. En cPanel → **Git™ Version Control** → **Manage** → **Pull or Deploy**: **Update from Remote** y luego **Deploy HEAD Commit**.
 
-O bien, si el servidor tiene acceso git:
+El pipeline reinstala dependencias, recompila y reinicia la app.
 
-```bash
-cd ~/docs.tudominio.com
-git pull
-```
+### 12.2 Cambios en `.env`
 
-### 12.2 Recompilar y reiniciar
+| Variable modificada | Qué hacer |
+|---|---|
+| `PREVIEW_SECRET` | Reiniciar: cPanel → **Setup Node.js App** → **Restart** |
+| Cualquier otra | **Deploy HEAD Commit** (recompila); reiniciar no basta |
 
-En la Terminal de cPanel (con el entorno activado):
-
-```bash
-cd ~/docs.tudominio.com
-
-# Solo si hay nuevas dependencias en package.json
-npm install --omit=dev
-
-# Recompilar siempre que haya cambios en src/ o astro.config.mjs
-npm run build
-```
-
-Luego reinicia desde cPanel → **Setup Node.js App** → **Restart**.
-
-> No es necesario reiniciar si el cambio es solo de contenido en Strapi — el portal es SSR y sirve contenido fresco en cada petición.
+> No es necesario redesplegar si el cambio es solo de contenido en Strapi: el portal es SSR y consulta la API en cada petición.
 
 ---
 
@@ -499,7 +453,7 @@ npm run build
 El servidor Astro no puede conectarse al backend. Verifica desde el servidor:
 
 ```bash
-curl -s https://cms.tudominio.com/api/documentation-categories | head -c 200
+curl -s "https://cms.tudominio.com/api/documentation-categories?space=mi-espacio" | head -c 200
 ```
 
 Si el resultado es vacío o un error de conexión:
@@ -507,11 +461,7 @@ Si el resultado es vacío o un error de conexión:
 - Verifica que Strapi está corriendo.
 - Verifica que no hay restricciones de firewall entre ambos servidores.
 
-Después de corregir `.env`, recompila y reinicia:
-```bash
-npm run build
-# Luego Restart en cPanel → Setup Node.js App
-```
+Después de corregir `.env`, vuelve a desplegar (**Deploy HEAD Commit**): `STRAPI_URL` se fija en el build y reiniciar no basta.
 
 ### Las imágenes de Strapi no cargan
 
@@ -519,14 +469,29 @@ Las URLs de imágenes vienen directamente de la API de Strapi. Si no cargan:
 - Si Strapi usa almacenamiento local: verifica que `STRAPI_URL` en el portal apunta al dominio correcto donde las imágenes son accesibles.
 - Si Strapi usa Wasabi/S3: verifica que el bucket es público y que las URLs están bien configuradas en Strapi.
 
-### Error: `SITE_URL` no tiene efecto
+### Un cambio en `.env` no tiene efecto
 
-`SITE_URL` se lee en `astro.config.mjs` solo en tiempo de compilación. Si cambias esta variable en `.env` después del build, debes volver a compilar para que tenga efecto:
+Todas las variables salvo `PREVIEW_SECRET` se fijan en el build. Vuelve a desplegar (**Deploy HEAD Commit**) para recompilar.
 
-```bash
-npm run build
-# Luego Restart en cPanel → Setup Node.js App
-```
+### El despliegue falla: `variables requeridas ausentes o vacías en .env`
+
+El pipeline validó el `.env` antes de compilar y falta alguna de `SITE_URL`, `STRAPI_URL` o `DOCUMENTATION_SPACE_SLUG`. Complétala y vuelve a desplegar. El mensaje solo nombra la variable, nunca su valor.
+
+### El despliegue falla: `entorno Node.js no encontrado`
+
+La app no existe en **Setup Node.js App** o usa otra versión/ruta. Crea la app (paso 7) con *Application root* igual al directorio del repositorio, o ajusta `NODE_VERSION`/`NODE_ACTIVATE` en `.cpanel.yml`.
+
+### El despliegue falla al clonar/actualizar: `untracked working tree files would be overwritten`
+
+El servidor tiene un `server.js` creado a mano. Bórralo y vuelve a desplegar (ver [paso 6](#6-archivo-de-inicio-serverjs)).
+
+### Live Preview: `401` al abrir un borrador
+
+El portal se compiló sin `STRAPI_API_TOKEN`. Agrégalo al `.env` y vuelve a desplegar.
+
+### Live Preview: `403`
+
+`PREVIEW_SECRET` falta o no coincide con el del backend. Corrígelo y reinicia la app.
 
 ### `server.js` reporta que `.env` no fue encontrado
 
@@ -568,6 +533,7 @@ El portal es SSR puro: cada petición renderiza la página desde cero consultand
 | Base de datos | MySQL de cPanel | No aplica |
 | Entry point | `server.js` → `dist/` | `server.js` → `dist/server/entry.mjs` |
 | Assets estáticos | `public/uploads/` | Servidos por Astro desde `dist/client/` |
-| Secrets en `.env` | App keys, JWT secrets, DB credentials | Solo URLs y configuración de contenido |
+| Secrets en `.env` | App keys, JWT secrets, DB credentials | `STRAPI_API_TOKEN` (read-only) y `PREVIEW_SECRET` |
 | Panel de admin | `/admin` (proteger por IP) | No aplica |
-| Reiniciar cuando... | Cambios en código o `.env` | Cambios en código o `.env` (no necesario para cambios de contenido en Strapi) |
+| Despliegue | Git Version Control + `.cpanel.yml` | Git Version Control + `.cpanel.yml` |
+| Cambios en `.env` | Reiniciar | Recompilar (salvo `PREVIEW_SECRET`: reiniciar) |

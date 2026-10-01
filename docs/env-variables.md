@@ -9,6 +9,8 @@ cp .env.example .env
 # Editar .env con los valores reales
 ```
 
+> **Importante — las variables se fijan en el build.** Astro 5 inyecta en el código compilado todas las variables que el portal lee con `import.meta.env` (`STRAPI_URL`, `DOCUMENTATION_SPACE_SLUG`, `STRAPI_API_TOKEN`, `SUPPORTED_LOCALES`, `DEFAULT_LOCALE`) y `SITE_URL`. Si cambian, hay que **recompilar**; reiniciar no basta. La única de runtime es `PREVIEW_SECRET`. Detalle en [deployment.md](deployment.md#variables-de-entorno-se-fijan-en-el-build).
+
 ## Variables disponibles
 
 ### `STRAPI_URL` — Obligatoria
