@@ -200,20 +200,38 @@
     .mermaid-wrapper[data-rendered="false"]::before { animation: none; }
   }
 
+  /* Subgraph titles are moved above the edges by the client script; this
+     background (same color as the subgraph fill) hides any edge passing
+     underneath. Horizontal-only shadow so the subgraph's top border stays
+     intact. foreignObject clips by default, hence overflow: visible. */
+  .mermaid-wrapper .cluster-label foreignObject {
+    overflow: visible;
+  }
+
+  .mermaid-wrapper .cluster-label .nodeLabel {
+    background-color: var(--bg-secondary);
+    box-shadow: 4px 0 0 var(--bg-secondary), -4px 0 0 var(--bg-secondary);
+    border-radius: 3px;
+  }
+
   .mermaid-wrapper svg {
     display: block;
     flex-shrink: 0;
     min-width: fit-content;
   }
 
+  /* On narrow screens, scale the diagram down to fit the content width so the
+     whole flow is visible at once (pinch-zoom still works), instead of a
+     horizontal scroll that hides half of the decision branches. */
   @media (max-width: 768px) {
-    .mermaid-wrapper::after {
-      content: '';
-      position: absolute;
-      top: 0; right: 0; bottom: 0;
-      width: 24px;
-      background: linear-gradient(to right, transparent, var(--bg-secondary));
-      pointer-events: none;
+    .mermaid-wrapper {
+      padding: 1rem 0.5rem;
+    }
+
+    .mermaid-wrapper svg {
+      min-width: 0;
+      max-width: 100%;
+      height: auto;
     }
   }
 

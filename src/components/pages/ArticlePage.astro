@@ -234,11 +234,51 @@ const breadcrumbs = [
         tertiaryColor: resolveVar('--bg-sidebar'),
         clusterBkg: resolveVar('--bg-secondary'),
         clusterBorder: resolveVar('--border-color'),
-        edgeLabelBackground: resolveVar('--bg-primary'),
+        // Same color as the diagram canvas (.mermaid-wrapper background), so
+        // edge-label chips blend in instead of showing as a darker patch.
+        edgeLabelBackground: resolveVar('--bg-secondary'),
         titleColor: resolveVar('--text-primary'),
         fontFamily: resolveVar('--font-sans'),
-        fontSize: '14px',
+        // Matches the article's body text so diagrams read at the same scale
+        // as the surrounding paragraphs.
+        fontSize: '16px',
       };
+    }
+
+    // Subgraph titles are centered by mermaid, which is exactly where edges
+    // enter the subgraph, so the edge line crosses the title text. Left-align
+    // each title and move all of them into a layer painted after the edges;
+    // the CSS gives them a background matching the subgraph fill, so any edge
+    // that still passes underneath is hidden behind the title.
+    function polishClusterTitles(svgEl: SVGSVGElement): void {
+      const root = svgEl.querySelector<SVGGElement>('g.root');
+      if (!root) return;
+
+      const titlesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      titlesLayer.setAttribute('class', 'cluster-titles');
+
+      root.querySelectorAll<SVGGElement>('g.cluster').forEach((cluster) => {
+        const rect = cluster.querySelector<SVGRectElement>(':scope > rect');
+        const label = cluster.querySelector<SVGGElement>(':scope > g.cluster-label');
+        if (!rect || !label) return;
+
+        const match = /translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*\)/.exec(label.getAttribute('transform') ?? '');
+        const rectX = parseFloat(rect.getAttribute('x') ?? '');
+        if (match && Number.isFinite(rectX)) {
+          label.setAttribute('transform', `translate(${rectX + 12}, ${match[2]})`);
+        }
+
+        // Only re-parent when no group between the label and g.root carries
+        // its own transform; otherwise moving it would shift its position.
+        let ancestor: Element | null = label.parentElement;
+        while (ancestor && ancestor !== root) {
+          if (ancestor.hasAttribute('transform')) return;
+          ancestor = ancestor.parentElement;
+        }
+        titlesLayer.appendChild(label);
+      });
+
+      if (titlesLayer.childNodes.length > 0) root.appendChild(titlesLayer);
     }
 
     // Guards against overlapping renders (e.g. a rapid double-click on the
@@ -271,11 +311,31 @@ const breadcrumbs = [
     }
 
     async function renderAllOnce() {
+      // Mermaid measures label text to size each box. If the web font hasn't
+      // loaded yet, it measures with the fallback font and the real (wider)
+      // font then overflows and gets clipped. Wait for fonts first.
+      await document.fonts.ready;
+
       mermaidApi!.initialize({
         startOnLoad: false,
         theme: 'base',
         themeVariables: buildThemeVariables(),
         securityLevel: 'strict',
+        // ELK routes edges orthogonally and spreads decision branches to the
+        // sides. It's already mermaid 12's default; set it explicitly so a
+        // future default change can't silently switch the layout engine.
+        layout: 'elk',
+        flowchart: {
+          // Render at natural size: with useMaxWidth the SVG is stretched to
+          // the container, which blows narrow diagrams up to oversized text.
+          useMaxWidth: false,
+          // Wider labels before wrapping (default 200px made boxes tall and
+          // narrow); kept moderate because decision diamonds grow with it.
+          wrappingWidth: 280,
+          nodeSpacing: 40,
+          rankSpacing: 45,
+          padding: 12,
+        },
       });
 
       const wrappers = document.querySelectorAll<HTMLElement>('.mermaid-wrapper');
@@ -293,6 +353,8 @@ const breadcrumbs = [
           } else {
             wrapper.insertAdjacentHTML('beforeend', svg);
           }
+          const svgEl = wrapper.querySelector<SVGSVGElement>('svg');
+          if (svgEl) polishClusterTitles(svgEl);
           bindFunctions?.(wrapper);
           wrapper.dataset['rendered'] = 'true';
         } catch (error) {
