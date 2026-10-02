@@ -50,3 +50,6 @@ packages/astro/e2e/fixtures/cloudflare/.wrangler/deploy/config.json
 
 # cPanel Passenger restart marker (touch tmp/restart.txt)
 tmp/
+
+# Generated tooling (skill registry with local paths)
+.atl/
