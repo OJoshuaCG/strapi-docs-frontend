@@ -75,7 +75,7 @@ const ctaUrl = settings?.headerLinkUrl;
         return (
           <a
             href={`/${locale}?section=${section.slug}`}
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[0.8rem] font-medium transition-colors whitespace-nowrap"
             style={isActive
               ? 'background-color: color-mix(in srgb, var(--color-brand-500) 15%, transparent); color: var(--color-brand-500);'
               : 'color: var(--text-secondary);'
@@ -98,7 +98,7 @@ const ctaUrl = settings?.headerLinkUrl;
           href={ctaUrl}
           target="_blank"
           rel="noopener noreferrer"
-          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border transition-colors"
+          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[0.8rem] font-medium border transition-colors"
           style="
             color: var(--text-secondary);
             border-color: var(--border-color);
