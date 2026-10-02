@@ -55,6 +55,7 @@ node dist/server/entry.mjs
 | [docs/strapi-integration.md](docs/strapi-integration.md) | Cómo se conecta el portal al CMS |
 | [docs/theming.md](docs/theming.md) | Sistema de temas dinámico desde Strapi |
 | [docs/content-blocks.md](docs/content-blocks.md) | Tipos de bloque de contenido soportados |
+| [docs/diagrams.md](docs/diagrams.md) | Diagramas en artículos (Graphviz y Mermaid) |
 | [docs/deployment.md](docs/deployment.md) | Guía de despliegue en cPanel y otros entornos |
 | [docs/adding-features.md](docs/adding-features.md) | Cómo extender el portal |
 
