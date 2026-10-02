@@ -4,10 +4,16 @@ El cuerpo de un artículo (Markdown) admite dos motores de diagramas. Ambos se r
 
 | Bloque | Motor | Úsalo para |
 |---|---|---|
-| ` ```dot ` (o ` ```graphviz `) | Graphviz | **Diagramas de flujo clásicos**: rombos de decisión con el "Sí" hacia abajo y el "No" saliendo por un lado. |
-| ` ```mermaid ` | Mermaid 12 | Secuencia, estados, clases, entidad-relación, Gantt, línea de tiempo, mapas mentales, etc. |
+| ` ```mermaid ` | Mermaid 12 (layout dagre) | **Opción por defecto.** Diagramas de flujo (`flowchart TD`) con las ramas de cada decisión a los costados, igual que en los editores online de Mermaid. También secuencia, estados, clases, entidad-relación, Gantt, línea de tiempo, mapas mentales, etc. |
+| ` ```dot ` (o ` ```graphviz `) | Graphviz | Diagramas de flujo **estrictamente clásicos**: el "Sí" sigue recto hacia abajo y el "No" sale horizontal por la punta derecha del rombo, con líneas en ángulo recto. |
 
-> Mermaid no permite fijar por qué lado sale cada rama de un rombo; por eso los diagramas de flujo de procedimientos van en Graphviz.
+> Cada bloque usa la sintaxis de su motor. Si cambias ` ```mermaid ` por ` ```dot `, también tienes que reescribir el contenido en DOT: Graphviz no entiende la sintaxis de Mermaid y el portal mostrará "No se pudo mostrar el diagrama".
+
+## Diagramas de flujo con Mermaid
+
+- Mermaid decide por qué lado sale cada rama: no se puede forzar que el "No" salga horizontal por la derecha. Si necesitas eso, usa Graphviz.
+- **El rombo crece con su texto.** El tamaño del rombo es aproximadamente el ancho más el alto de la pregunta. Escribe preguntas cortas, y deja el detalle en el paso siguiente o en el texto del artículo. Medido: `{"Tienes sesion iniciada en Facebook?"}` da un rombo de 281 px; `{"¿Sesión iniciada?"}`, de 168 px. No cortes la pregunta en varias líneas: el rombo crece en vez de achicarse.
+- Las directivas `%%{init}%%` y el `config:` del frontmatter no cambian el tema, la fuente ni el layout (ver "Qué se bloquea por seguridad").
 
 ## Plantilla de diagrama de flujo (Graphviz)
 
