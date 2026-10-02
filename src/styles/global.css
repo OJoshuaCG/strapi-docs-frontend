@@ -247,7 +247,9 @@
   .graphviz-wrapper svg text {
     font-family: var(--font-sans), system-ui, sans-serif;
     /* Keeps glyph spacing even when the SVG is scaled down (mobile);
-       Chrome's default hinting there breaks words apart ("contras eña"). */
+       Chrome's default hinting there breaks words apart ("contras eña").
+       Graphviz only: mermaid measures its labels before this CSS applies,
+       so wider glyphs would overflow its boxes. */
     text-rendering: geometricPrecision;
   }
 

@@ -107,18 +107,20 @@ async function renderAllOnce(wrappers: HTMLElement[]): Promise<void> {
     themeVariables: buildThemeVariables(),
     securityLevel: 'strict',
     secure: SECURE_KEYS,
-    // ELK routes edges orthogonally. It's already mermaid 12's default; set
-    // it explicitly so a future default change can't silently switch it.
-    layout: 'elk',
+    // dagre places a decision's branches side by side (one continues down,
+    // the other veers off to its own column), the layout online mermaid
+    // editors show. ELK — mermaid 12's default — stacks every branch below
+    // the diamond, which reads as a straight line instead of a decision.
+    layout: 'dagre',
     flowchart: {
       // Render at natural size: with useMaxWidth the SVG is stretched to
       // the container, which blows narrow diagrams up to oversized text.
       useMaxWidth: false,
-      // Wider labels before wrapping (default 200px made boxes tall and
-      // narrow); kept moderate because decision diamonds grow with it.
+      // Wider labels before wrapping: the default 200px made boxes tall
+      // and narrow and clipped long words; diamonds stay compact too.
       wrappingWidth: 280,
-      nodeSpacing: 40,
-      rankSpacing: 45,
+      nodeSpacing: 50,
+      rankSpacing: 50,
       padding: 12,
     },
   });
