@@ -186,15 +186,41 @@ const breadcrumbs = [
       return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     }
 
-    function resolveColorMix(): string {
+    // Resolves a CSS custom property to the concrete color the browser would
+    // paint it as. Uses a plain `var()` substitution (no color-mix()) so every
+    // browser serializes it as classic rgb()/rgba() — never the CSS Color 4
+    // `color(srgb ...)` function, which mermaid's color library (khroma) can't
+    // parse (verified against its source: it only accepts hex/rgb/hsl/keyword).
+    function resolveOpaqueColor(varName: string): string {
       const probe = document.createElement('div');
       probe.style.position = 'absolute';
       probe.style.visibility = 'hidden';
-      probe.style.backgroundColor = 'color-mix(in srgb, var(--color-brand-500) 12%, var(--bg-secondary))';
+      probe.style.backgroundColor = `var(${varName})`;
       document.body.appendChild(probe);
       const resolved = getComputedStyle(probe).backgroundColor;
       probe.remove();
       return resolved;
+    }
+
+    function parseRgbChannels(rgb: string): [number, number, number] | null {
+      const match = rgb.match(/rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i);
+      if (!match) return null;
+      return [parseFloat(match[1]), parseFloat(match[2]), parseFloat(match[3])];
+    }
+
+    // Blends --color-brand-500 into --bg-secondary at `ratio` (0-1), computed
+    // manually in JS so we never hand mermaid a color-mix() result — only the
+    // two unmixed base colors are resolved via the browser (always rgb()),
+    // and the actual mixing math happens here, independent of browser quirks.
+    function resolveColorMix(ratio = 0.12): string {
+      const brand = parseRgbChannels(resolveOpaqueColor('--color-brand-500'));
+      const bg = parseRgbChannels(resolveOpaqueColor('--bg-secondary'));
+      if (!brand || !bg) return resolveOpaqueColor('--bg-secondary');
+
+      const [r, g, b] = brand.map((channel, i) =>
+        Math.round(channel * ratio + bg[i] * (1 - ratio))
+      );
+      return `rgb(${r}, ${g}, ${b})`;
     }
 
     function buildThemeVariables() {
