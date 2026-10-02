@@ -176,207 +176,22 @@ const breadcrumbs = [
 </script>
 
 <script>
-  // Mermaid diagrams: lazy-loaded client-side, only when a page actually has one.
-  const mermaidWrappers = document.querySelectorAll<HTMLElement>('.mermaid-wrapper');
+  // Diagrams are rendered client-side; each engine is lazy-loaded only when
+  // the page actually contains a diagram for it.
+  const wrappersFor = (engine: string) =>
+    Array.from(document.querySelectorAll<HTMLElement>(`.diagram-wrapper[data-engine="${engine}"]`));
 
+  const mermaidWrappers = wrappersFor('mermaid');
   if (mermaidWrappers.length > 0) {
-    let mermaidApi: typeof import('mermaid')['default'] | null = null;
-
-    function resolveVar(name: string): string {
-      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    }
-
-    // Resolves a CSS custom property to the concrete color the browser would
-    // paint it as. Uses a plain `var()` substitution (no color-mix()) so every
-    // browser serializes it as classic rgb()/rgba() — never the CSS Color 4
-    // `color(srgb ...)` function, which mermaid's color library (khroma) can't
-    // parse (verified against its source: it only accepts hex/rgb/hsl/keyword).
-    function resolveOpaqueColor(varName: string): string {
-      const probe = document.createElement('div');
-      probe.style.position = 'absolute';
-      probe.style.visibility = 'hidden';
-      probe.style.backgroundColor = `var(${varName})`;
-      document.body.appendChild(probe);
-      const resolved = getComputedStyle(probe).backgroundColor;
-      probe.remove();
-      return resolved;
-    }
-
-    function parseRgbChannels(rgb: string): [number, number, number] | null {
-      const match = rgb.match(/rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i);
-      if (!match) return null;
-      return [parseFloat(match[1]), parseFloat(match[2]), parseFloat(match[3])];
-    }
-
-    // Blends --color-brand-500 into --bg-secondary at `ratio` (0-1), computed
-    // manually in JS so we never hand mermaid a color-mix() result — only the
-    // two unmixed base colors are resolved via the browser (always rgb()),
-    // and the actual mixing math happens here, independent of browser quirks.
-    function resolveColorMix(ratio = 0.12): string {
-      const brand = parseRgbChannels(resolveOpaqueColor('--color-brand-500'));
-      const bg = parseRgbChannels(resolveOpaqueColor('--bg-secondary'));
-      if (!brand || !bg) return resolveOpaqueColor('--bg-secondary');
-
-      const [r, g, b] = brand.map((channel, i) =>
-        Math.round(channel * ratio + bg[i] * (1 - ratio))
-      );
-      return `rgb(${r}, ${g}, ${b})`;
-    }
-
-    function buildThemeVariables() {
-      return {
-        primaryColor: resolveColorMix(),
-        primaryTextColor: resolveVar('--text-primary'),
-        primaryBorderColor: resolveVar('--color-brand-500'),
-        nodeTextColor: resolveVar('--text-primary'),
-        lineColor: resolveVar('--text-secondary'),
-        secondaryColor: resolveVar('--bg-secondary'),
-        tertiaryColor: resolveVar('--bg-sidebar'),
-        clusterBkg: resolveVar('--bg-secondary'),
-        clusterBorder: resolveVar('--border-color'),
-        // Same color as the diagram canvas (.mermaid-wrapper background), so
-        // edge-label chips blend in instead of showing as a darker patch.
-        edgeLabelBackground: resolveVar('--bg-secondary'),
-        titleColor: resolveVar('--text-primary'),
-        fontFamily: resolveVar('--font-sans'),
-        // Matches the article's body text so diagrams read at the same scale
-        // as the surrounding paragraphs.
-        fontSize: '16px',
-      };
-    }
-
-    // Subgraph titles are centered by mermaid, which is exactly where edges
-    // enter the subgraph, so the edge line crosses the title text. Left-align
-    // each title and move all of them into a layer painted after the edges;
-    // the CSS gives them a background matching the subgraph fill, so any edge
-    // that still passes underneath is hidden behind the title.
-    function polishClusterTitles(svgEl: SVGSVGElement): void {
-      const root = svgEl.querySelector<SVGGElement>('g.root');
-      if (!root) return;
-
-      const titlesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      titlesLayer.setAttribute('class', 'cluster-titles');
-
-      root.querySelectorAll<SVGGElement>('g.cluster').forEach((cluster) => {
-        const rect = cluster.querySelector<SVGRectElement>(':scope > rect');
-        const label = cluster.querySelector<SVGGElement>(':scope > g.cluster-label');
-        if (!rect || !label) return;
-
-        const match = /translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*\)/.exec(label.getAttribute('transform') ?? '');
-        const rectX = parseFloat(rect.getAttribute('x') ?? '');
-        if (match && Number.isFinite(rectX)) {
-          label.setAttribute('transform', `translate(${rectX + 12}, ${match[2]})`);
-        }
-
-        // Only re-parent when no group between the label and g.root carries
-        // its own transform; otherwise moving it would shift its position.
-        let ancestor: Element | null = label.parentElement;
-        while (ancestor && ancestor !== root) {
-          if (ancestor.hasAttribute('transform')) return;
-          ancestor = ancestor.parentElement;
-        }
-        titlesLayer.appendChild(label);
-      });
-
-      if (titlesLayer.childNodes.length > 0) root.appendChild(titlesLayer);
-    }
-
-    // Guards against overlapping renders (e.g. a rapid double-click on the
-    // theme toggle): mermaid.render() reuses the same id per diagram across
-    // calls, and two concurrent calls racing on that id could step on each
-    // other's temporary DOM nodes. If a render is already in flight, queue at
-    // most one more pass right after it finishes instead of starting a second
-    // one in parallel.
-    let isRendering = false;
-    let rerenderQueued = false;
-
-    async function renderAll() {
-      if (!mermaidApi) return;
-
-      if (isRendering) {
-        rerenderQueued = true;
-        return;
-      }
-      isRendering = true;
-
-      try {
-        await renderAllOnce();
-      } finally {
-        isRendering = false;
-        if (rerenderQueued) {
-          rerenderQueued = false;
-          void renderAll();
-        }
-      }
-    }
-
-    async function renderAllOnce() {
-      // Mermaid measures label text to size each box. If the web font hasn't
-      // loaded yet, it measures with the fallback font and the real (wider)
-      // font then overflows and gets clipped. Wait for fonts first.
-      await document.fonts.ready;
-
-      mermaidApi!.initialize({
-        startOnLoad: false,
-        theme: 'base',
-        themeVariables: buildThemeVariables(),
-        securityLevel: 'strict',
-        // ELK routes edges orthogonally and spreads decision branches to the
-        // sides. It's already mermaid 12's default; set it explicitly so a
-        // future default change can't silently switch the layout engine.
-        layout: 'elk',
-        flowchart: {
-          // Render at natural size: with useMaxWidth the SVG is stretched to
-          // the container, which blows narrow diagrams up to oversized text.
-          useMaxWidth: false,
-          // Wider labels before wrapping (default 200px made boxes tall and
-          // narrow); kept moderate because decision diamonds grow with it.
-          wrappingWidth: 280,
-          nodeSpacing: 40,
-          rankSpacing: 45,
-          padding: 12,
-        },
-      });
-
-      const wrappers = document.querySelectorAll<HTMLElement>('.mermaid-wrapper');
-      for (let i = 0; i < wrappers.length; i++) {
-        const wrapper = wrappers[i];
-        const source = wrapper.querySelector<HTMLElement>('.mermaid-source');
-        const sourceText = source?.textContent ?? '';
-
-        try {
-          const { svg, bindFunctions } = await mermaidApi!.render(`mermaid-svg-${i}`, sourceText);
-          const existingSvg = wrapper.querySelector('svg');
-          existingSvg?.remove();
-          if (source) {
-            source.insertAdjacentHTML('afterend', svg);
-          } else {
-            wrapper.insertAdjacentHTML('beforeend', svg);
-          }
-          const svgEl = wrapper.querySelector<SVGSVGElement>('svg');
-          if (svgEl) polishClusterTitles(svgEl);
-          bindFunctions?.(wrapper);
-          wrapper.dataset['rendered'] = 'true';
-        } catch (error) {
-          console.error(`Mermaid render failed for diagram ${i}:`, error);
-          const existingSvg = wrapper.querySelector('svg');
-          existingSvg?.remove();
-          const errorMsg = document.createElement('p');
-          errorMsg.style.color = 'var(--text-muted)';
-          errorMsg.textContent = 'No se pudo renderizar el diagrama.';
-          wrapper.appendChild(errorMsg);
-          wrapper.dataset['rendered'] = 'true';
-        }
-      }
-    }
-
-    import('mermaid').then((module) => {
-      mermaidApi = module.default;
-      void renderAll();
+    void import('@/lib/client/mermaid-renderer').then(({ mountMermaidDiagrams }) => {
+      mountMermaidDiagrams(mermaidWrappers);
     });
+  }
 
-    window.addEventListener('theme-change', () => {
-      void renderAll();
+  const graphvizWrappers = wrappersFor('graphviz');
+  if (graphvizWrappers.length > 0) {
+    void import('@/lib/client/graphviz-renderer').then(({ mountGraphvizDiagrams }) => {
+      mountGraphvizDiagrams(graphvizWrappers);
     });
   }
 </script>

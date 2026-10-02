@@ -14,6 +14,26 @@ const langMap: Record<string, string> = {
   plain: 'plaintext',
 };
 
+type DiagramEngine = 'mermaid' | 'graphviz';
+
+// Fence languages rendered client-side as diagrams, mapped to their engine.
+const diagramLangs: Record<string, DiagramEngine> = {
+  mermaid: 'mermaid',
+  dot: 'graphviz',
+  graphviz: 'graphviz',
+};
+
+// Written out literally (not built from the engine name) so Tailwind's
+// content scan finds them and keeps their styles in global.css.
+const diagramWrapperClass: Record<DiagramEngine, string> = {
+  mermaid: 'diagram-wrapper mermaid-wrapper',
+  graphviz: 'diagram-wrapper graphviz-wrapper',
+};
+
+function diagramEngine(lang: string | undefined): DiagramEngine | undefined {
+  return lang ? diagramLangs[lang.toLowerCase()] : undefined;
+}
+
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, '');
 }
@@ -80,9 +100,9 @@ export async function renderMarkdown(body: string): Promise<RenderedMarkdown> {
     gfm: true,
     breaks: false,
     walkTokens: async (token: Token) => {
-      if (token.type === 'code' && token.lang === 'mermaid') {
-        // Mermaid diagrams are rendered client-side from their raw source;
-        // skip shiki highlighting/caching for these tokens entirely.
+      if (token.type === 'code' && diagramEngine(token.lang)) {
+        // Diagrams are rendered client-side from their raw source; skip shiki
+        // highlighting/caching for these tokens entirely.
         return;
       }
       if (token.type === 'code') {
@@ -92,9 +112,11 @@ export async function renderMarkdown(body: string): Promise<RenderedMarkdown> {
     },
     renderer: {
       code(token: Tokens.Code) {
-        if (token.lang === 'mermaid') {
-          return `<div class="mermaid-wrapper" data-rendered="false">
-  <pre class="mermaid-source" data-mermaid>${escapeAttr(token.text)}</pre>
+        const engine = diagramEngine(token.lang);
+        if (engine) {
+          // Focusable region so keyboard users can scroll a wide diagram.
+          return `<div class="${diagramWrapperClass[engine]}" role="region" aria-label="Diagrama" tabindex="0" data-engine="${engine}" data-rendered="false">
+  <pre class="diagram-source">${escapeAttr(token.text)}</pre>
 </div>`;
         }
         return codeCache.get(token as object) ?? `<pre><code>${token.text}</code></pre>`;

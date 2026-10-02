@@ -158,8 +158,8 @@
     background-color: transparent !important;
   }
 
-  /* ── Mermaid diagrams ────────────────────────────────────────────────────── */
-  .mermaid-wrapper {
+  /* ── Diagrams (mermaid, graphviz) ───────────────────────────────────────── */
+  .diagram-wrapper {
     position: relative;
     display: flex;
     /* Centers the diagram when it's narrower than the article's content
@@ -175,13 +175,13 @@
     overflow-x: auto;
   }
 
-  /* The raw mermaid source only exists for the client script to read via
+  /* The raw diagram source only exists for the client script to read via
      textContent; it's never meant to be shown, rendered or not. */
-  .mermaid-source {
+  .diagram-source {
     display: none;
   }
 
-  .mermaid-wrapper[data-rendered="false"]::before {
+  .diagram-wrapper[data-rendered="false"]::before {
     content: '';
     display: block;
     width: 100%;
@@ -189,23 +189,51 @@
     border-radius: calc(var(--code-border-radius, 0.5rem) * 0.5);
     background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border-color) 50%, var(--bg-secondary) 75%);
     background-size: 200% 100%;
-    animation: mermaid-skeleton-pulse 1.4s ease-in-out infinite;
+    animation: diagram-skeleton-pulse 1.4s ease-in-out infinite;
   }
 
-  @keyframes mermaid-skeleton-pulse {
+  @keyframes diagram-skeleton-pulse {
     to { background-position: -200% 0; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .mermaid-wrapper[data-rendered="false"]::before { animation: none; }
+    .diagram-wrapper[data-rendered="false"]::before { animation: none; }
   }
 
-  /* Subgraph titles are moved above the edges by the client script; this
-     background (same color as the subgraph fill) hides any edge passing
+  .diagram-wrapper:focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+
+  .diagram-error {
+    margin: 0;
+    max-width: 36rem;
+    text-align: center;
+    color: var(--text-secondary);
+  }
+
+  .diagram-wrapper svg {
+    display: block;
+    flex-shrink: 0;
+    min-width: fit-content;
+  }
+
+  /* Mermaid: subgraph titles are moved above the edges by the client script;
+     this background (same color as the subgraph fill) hides any edge passing
      underneath. Horizontal-only shadow so the subgraph's top border stays
      intact. foreignObject clips by default, hence overflow: visible. */
   .mermaid-wrapper .cluster-label foreignObject {
     overflow: visible;
+  }
+
+  /* Same node look as graphviz: rounded corners, no drop shadow. */
+  .mermaid-wrapper svg g.node > rect {
+    rx: 6px;
+    ry: 6px;
+  }
+
+  .mermaid-wrapper svg :is(g.node, g.cluster) :is(rect, path, polygon, circle) {
+    filter: none !important;
   }
 
   .mermaid-wrapper .cluster-label .nodeLabel {
@@ -214,23 +242,34 @@
     border-radius: 3px;
   }
 
-  .mermaid-wrapper svg {
-    display: block;
-    flex-shrink: 0;
-    min-width: fit-content;
+  /* Graphviz lays text out with Helvetica metrics (the client script widens
+     the boxes to fit); the text itself is drawn in the site font. */
+  .graphviz-wrapper svg text {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    /* Keeps glyph spacing even when the SVG is scaled down (mobile);
+       Chrome's default hinting there breaks words apart ("contras eña"). */
+    text-rendering: geometricPrecision;
   }
 
-  /* On narrow screens, scale the diagram down to fit the content width so the
-     whole flow is visible at once (pinch-zoom still works), instead of a
-     horizontal scroll that hides half of the decision branches. */
+  .graphviz-wrapper .cluster-title-chip {
+    fill: var(--bg-secondary);
+  }
+
+  /* On narrow screens, shrink a wide diagram toward the content width but
+     never below 35rem (~10px text at the default sizes); past that it scrolls
+     horizontally. Scaling to fit made text ~7px, unreadable. Diagrams are
+     two-dimensional content, exempt from reflow (WCAG 1.4.10). Never scales
+     a small diagram up beyond its natural width (--diagram-width, set by the
+     client script). */
   @media (max-width: 768px) {
-    .mermaid-wrapper {
+    .diagram-wrapper {
       padding: 1rem 0.5rem;
     }
 
-    .mermaid-wrapper svg {
+    .diagram-wrapper svg {
       min-width: 0;
-      max-width: 100%;
+      width: min(var(--diagram-width, 100%), max(35rem, 100%));
+      max-width: none;
       height: auto;
     }
   }
