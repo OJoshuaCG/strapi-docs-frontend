@@ -161,6 +161,12 @@
   /* ── Mermaid diagrams ────────────────────────────────────────────────────── */
   .mermaid-wrapper {
     position: relative;
+    display: flex;
+    /* Centers the diagram when it's narrower than the article's content
+       width (the common case); `safe` falls back to start-alignment when it's
+       wider, so a diagram needing horizontal scroll still begins at its own
+       left edge instead of starting off-screen. */
+    justify-content: safe center;
     margin-bottom: var(--paragraph-spacing, 1rem);
     border-radius: var(--code-border-radius, 0.5rem);
     border: 1px solid var(--border-color);
@@ -169,13 +175,16 @@
     overflow-x: auto;
   }
 
-  .mermaid-wrapper[data-rendered="false"] .mermaid-source {
+  /* The raw mermaid source only exists for the client script to read via
+     textContent; it's never meant to be shown, rendered or not. */
+  .mermaid-source {
     display: none;
   }
 
   .mermaid-wrapper[data-rendered="false"]::before {
     content: '';
     display: block;
+    width: 100%;
     min-height: 200px;
     border-radius: calc(var(--code-border-radius, 0.5rem) * 0.5);
     background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border-color) 50%, var(--bg-secondary) 75%);
@@ -193,6 +202,7 @@
 
   .mermaid-wrapper svg {
     display: block;
+    flex-shrink: 0;
     min-width: fit-content;
   }
 
