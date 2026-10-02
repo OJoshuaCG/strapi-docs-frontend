@@ -241,10 +241,37 @@ const breadcrumbs = [
       };
     }
 
+    // Guards against overlapping renders (e.g. a rapid double-click on the
+    // theme toggle): mermaid.render() reuses the same id per diagram across
+    // calls, and two concurrent calls racing on that id could step on each
+    // other's temporary DOM nodes. If a render is already in flight, queue at
+    // most one more pass right after it finishes instead of starting a second
+    // one in parallel.
+    let isRendering = false;
+    let rerenderQueued = false;
+
     async function renderAll() {
       if (!mermaidApi) return;
 
-      mermaidApi.initialize({
+      if (isRendering) {
+        rerenderQueued = true;
+        return;
+      }
+      isRendering = true;
+
+      try {
+        await renderAllOnce();
+      } finally {
+        isRendering = false;
+        if (rerenderQueued) {
+          rerenderQueued = false;
+          void renderAll();
+        }
+      }
+    }
+
+    async function renderAllOnce() {
+      mermaidApi!.initialize({
         startOnLoad: false,
         theme: 'base',
         themeVariables: buildThemeVariables(),
@@ -258,7 +285,7 @@ const breadcrumbs = [
         const sourceText = source?.textContent ?? '';
 
         try {
-          const { svg, bindFunctions } = await mermaidApi.render(`mermaid-svg-${i}`, sourceText);
+          const { svg, bindFunctions } = await mermaidApi!.render(`mermaid-svg-${i}`, sourceText);
           const existingSvg = wrapper.querySelector('svg');
           existingSvg?.remove();
           if (source) {
