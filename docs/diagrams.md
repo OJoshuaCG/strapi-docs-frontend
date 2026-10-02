@@ -15,6 +15,52 @@ El cuerpo de un artículo (Markdown) admite dos motores de diagramas. Ambos se r
 - **El rombo crece con su texto.** El tamaño del rombo es aproximadamente el ancho más el alto de la pregunta. Escribe preguntas cortas, y deja el detalle en el paso siguiente o en el texto del artículo. Medido: `{"Tienes sesion iniciada en Facebook?"}` da un rombo de 281 px; `{"¿Sesión iniciada?"}`, de 168 px. No cortes la pregunta en varias líneas: el rombo crece en vez de achicarse.
 - Las directivas `%%{init}%%` y el `config:` del frontmatter no cambian el tema, la fuente ni el layout (ver "Qué se bloquea por seguridad").
 
+## Tipos de diagrama Mermaid soportados
+
+Probados en el portal con Mermaid 12.1.0, en Chromium y Firefox, en tema claro y oscuro. Todos usan la paleta y la fuente del sitio.
+
+| Palabra inicial | Tipo | Estado |
+|---|---|---|
+| `flowchart` | Diagrama de flujo | Estable |
+| `sequenceDiagram` | Secuencia | Estable |
+| `classDiagram` | Clases | Estable |
+| `stateDiagram-v2` | Estados | Estable |
+| `erDiagram` | Entidad-relación | Estable |
+| `journey` | Recorrido de usuario | Estable |
+| `gantt` | Gantt (ocupa el ancho del artículo) | Estable |
+| `pie` | Torta | Estable |
+| `quadrantChart` | Cuadrantes | Estable |
+| `requirementDiagram` | Requisitos | Estable |
+| `gitGraph` | Ramas de Git | Estable |
+| `C4Context` | C4 | Estable |
+| `mindmap` | Mapa mental | Estable |
+| `timeline` | Línea de tiempo | Estable |
+| `sankey-beta` | Sankey | Beta |
+| `xychart-beta` | Barras y líneas | Beta |
+| `block-beta` | Bloques | Beta |
+| `packet-beta` | Paquete de red | Beta |
+| `kanban` | Kanban | Estable |
+| `architecture-beta` | Arquitectura | Beta |
+| `radar-beta` | Radar | Beta |
+| `treemap-beta` | Treemap | Beta |
+| `venn-beta` | Venn | Beta |
+| `ishikawa-beta` | Ishikawa (espina de pescado) | Beta |
+| `wardley-beta` | Mapa de Wardley. **Los nombres de los componentes no pueden llevar acentos ni ñ** (falla el análisis). | Beta |
+| `cynefin-beta` | Cynefin | Beta |
+| `railroad-beta`, `railroad-ebnf-beta` | Diagramas de sintaxis | Beta |
+| `usecase-beta` | Casos de uso | Beta |
+| `swimlane-beta` | Carriles | Beta |
+| `eventmodeling` | Event modeling | Beta |
+| `treeView-beta` | Árbol de archivos | Beta |
+| `agentflow-beta` | Flujo de agentes | Beta |
+
+"Beta" significa que Mermaid puede cambiar la sintaxis en una versión futura: si un diagrama beta deja de verse después de actualizar Mermaid, revisa su documentación en [mermaid.js.org](https://mermaid.js.org/).
+
+Notas:
+
+- Los diagramas se muestran a su tamaño natural. Si son más anchos que el artículo, se desplazan horizontalmente.
+- Los colores de series (torta, barras, ramas de Git, radar, Venn) siguen un orden fijo, validado para daltonismo: azul, naranja, aqua, amarillo, magenta, verde, violeta, rojo. Con más de 8 series, los colores se repiten: agrupa las menores en "Otros".
+
 ## Plantilla de diagrama de flujo (Graphviz)
 
 ```dot
