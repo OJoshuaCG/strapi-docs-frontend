@@ -44,6 +44,20 @@ export function brandTintedSurface(ratio = 0.12): Rgb | null {
   return brand.map((channel, i) => Math.round(channel * ratio + bg[i] * (1 - ratio))) as Rgb;
 }
 
+export function hexToRgb(hex: string): Rgb {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// Blends `color` into `base` at `ratio` (0-1 of `color`).
+export function mixRgb(color: Rgb, base: Rgb, ratio: number): Rgb {
+  return color.map((channel, i) => Math.round(channel * ratio + base[i] * (1 - ratio))) as Rgb;
+}
+
+export function isDarkTheme(): boolean {
+  return document.documentElement.classList.contains('dark');
+}
+
 export function rgbString([r, g, b]: Rgb): string {
   return `rgb(${r}, ${g}, ${b})`;
 }

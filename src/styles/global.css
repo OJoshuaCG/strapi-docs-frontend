@@ -236,6 +236,11 @@
     filter: none !important;
   }
 
+  /* Wardley maps hardcode black anchor labels and don't apply themeCSS. */
+  .mermaid-wrapper svg .wardley-node-label {
+    fill: var(--text-primary);
+  }
+
   .mermaid-wrapper .cluster-label .nodeLabel {
     background-color: var(--bg-secondary);
     box-shadow: 4px 0 0 var(--bg-secondary), -4px 0 0 var(--bg-secondary);
