@@ -107,6 +107,47 @@
     color: var(--text-secondary);
   }
 
+  /* Recuadros `>`, `> [!NOTE]` y `> [!WARNING]` (lib/utils/markdown.ts). La nota sale de los colores
+     de recuadro del tema de Strapi, mezclados con el fondo de la página para que queden suaves en
+     claro y en oscuro (el tema suele traer un azul intenso). La advertencia es ámbar fijo. */
+  .prose-docs .callout {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--callout-border) 40%, var(--bg-primary));
+    border-radius: calc(var(--border-radius, 0.5rem) * 1.25);
+    background-color: color-mix(in srgb, var(--callout-bg) 70%, var(--bg-primary));
+    color: var(--text-primary);
+    margin-bottom: var(--paragraph-spacing, 1rem);
+    font-size: 0.95em;
+  }
+  /* El icono (20px) se centra en la primera línea del texto: medio alto de línea menos medio icono. */
+  .prose-docs .callout-icon { flex-shrink: 0; margin-top: calc((1lh - 20px) / 2); color: var(--color-brand-500); }
+  .prose-docs .callout-body { min-width: 0; }
+  .prose-docs .callout-body > :last-child { margin-bottom: 0; }
+  .prose-docs .callout-label { font-weight: 600; }
+
+  .prose-docs .callout-warning {
+    --warning-bg: #fffbeb;
+    --warning-border: #fcd34d;
+    --warning-icon: #b45309;
+    --warning-text: #78350f;
+    background-color: var(--warning-bg);
+    border-color: var(--warning-border);
+    color: var(--warning-text);
+  }
+  .dark .prose-docs .callout-warning {
+    --warning-bg: rgb(245 158 11 / 0.1);
+    --warning-border: rgb(245 158 11 / 0.4);
+    --warning-icon: #fbbf24;
+    --warning-text: #fde68a;
+  }
+  .prose-docs .callout-warning .callout-icon { color: var(--warning-icon); }
+  .prose-docs .callout-warning a { color: inherit; }
+  /* En oscuro el fondo de recuadro del tema suele ser del mismo tono que los enlaces: el enlace
+     toma el color del texto y se distingue por el subrayado. */
+  .dark .prose-docs .callout-note a { color: inherit; }
+
   .prose-docs img {
     border-radius: var(--border-radius, 0.5rem);
     max-width: 100%;
@@ -281,20 +322,31 @@
     }
   }
 
-  /* Tables */
+  /* Tables: contenedor redondeado que se desplaza a los lados si la tabla no cabe;
+     solo líneas entre filas. El contenedor lo agrega lib/utils/markdown.ts. */
+  .prose-docs .table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: calc(var(--border-radius, 0.5rem) * 1.25);
+    margin-bottom: var(--paragraph-spacing, 1rem);
+  }
+
   .prose-docs table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: var(--paragraph-spacing, 1rem);
     font-size: 0.9rem;
   }
+  .prose-docs .table-wrapper table { margin-bottom: 0; }
 
   .prose-docs th,
   .prose-docs td {
-    border: 1px solid var(--border-color);
-    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--border-color);
+    padding: 0.625rem 0.875rem;
     text-align: left;
+    vertical-align: top;
   }
+  .prose-docs thead th { border-top: 0; }
 
   .prose-docs th {
     background-color: var(--bg-secondary);
@@ -346,4 +398,9 @@
     color-mix(in srgb, var(--color-brand-500) 22%, transparent),
     transparent 70%
   );
+}
+
+/* En oscuro el fondo de recuadro del tema es muy saturado: se mezcla más con el fondo. */
+.dark .prose-docs .callout-note {
+  background-color: color-mix(in srgb, var(--callout-bg) 35%, var(--bg-primary));
 }

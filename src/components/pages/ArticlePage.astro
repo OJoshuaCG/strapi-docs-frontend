@@ -21,7 +21,7 @@ const { article, locale, categorySlug, common, preview = false } = Astro.props;
 
 // Markdown → HTML + TOC (built from the rendered headings)
 const { html: articleHtml, toc } = article.body
-  ? await renderMarkdown(article.body)
+  ? await renderMarkdown(article.body, locale)
   : { html: '', toc: [] };
 
 const ui = getUi(locale);
@@ -164,15 +164,15 @@ const breadcrumbs = [
 <script>
   document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      const code = btn.dataset['code'] ?? '';
+      // Los textos vienen en el botón, ya en el idioma de la página.
+      const { code = '', label = '', copied = '', error = '' } = btn.dataset;
       try {
         await navigator.clipboard.writeText(code);
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+        btn.textContent = copied;
       } catch {
-        btn.textContent = 'Error';
-        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+        btn.textContent = error;
       }
+      setTimeout(() => { btn.textContent = label; }, 2000);
     });
   });
 </script>
