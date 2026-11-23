@@ -1,4 +1,6 @@
 ---
+import { getUi } from '@/lib/i18n/ui';
+
 interface NavArticle {
   title: string;
   href: string;
@@ -7,16 +9,18 @@ interface NavArticle {
 interface Props {
   prev?: NavArticle;
   next?: NavArticle;
+  locale: string;
 }
 
-const { prev, next } = Astro.props;
+const { prev, next, locale } = Astro.props;
+const ui = getUi(locale);
 ---
 
 {(prev || next) && (
   <nav
     class="flex items-stretch gap-4 mt-12 pt-6 border-t"
     style="border-color: var(--border-color);"
-    aria-label="Article navigation"
+    aria-label={ui.articleNav}
   >
     {prev ? (
       <a
@@ -24,7 +28,7 @@ const { prev, next } = Astro.props;
         class="flex-1 group flex flex-col gap-1 p-4 rounded-lg border transition-colors"
         style="border-color: var(--border-color);"
       >
-        <span class="text-xs" style="color: var(--text-muted);">← Previous</span>
+        <span class="text-xs" style="color: var(--text-secondary);">← {ui.previous}</span>
         <span
           class="text-sm font-medium transition-colors group-hover:underline"
           style="color: var(--text-primary);"
@@ -42,7 +46,7 @@ const { prev, next } = Astro.props;
         class="flex-1 group flex flex-col gap-1 p-4 rounded-lg border text-right transition-colors"
         style="border-color: var(--border-color);"
       >
-        <span class="text-xs" style="color: var(--text-muted);">Next →</span>
+        <span class="text-xs" style="color: var(--text-secondary);">{ui.next} →</span>
         <span
           class="text-sm font-medium transition-colors group-hover:underline"
           style="color: var(--text-primary);"

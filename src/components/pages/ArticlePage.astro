@@ -4,6 +4,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
 import ArticleNav from '@/components/ui/ArticleNav.astro';
 import { getArticlesByCategory } from '@/lib/strapi/client';
 import { renderMarkdown } from '@/lib/utils/markdown';
+import { getUi } from '@/lib/i18n/ui';
 import type { CommonPageData } from '@/lib/utils/page-data';
 import type { DocumentationArticle } from '@/lib/domain/types';
 
@@ -23,6 +24,7 @@ const { html: articleHtml, toc } = article.body
   ? await renderMarkdown(article.body)
   : { html: '', toc: [] };
 
+const ui = getUi(locale);
 const sectionSlug = article.category?.documentation_section?.slug;
 const { settings, sections, sidebarCategories, supportedLocales } = common;
 
@@ -96,7 +98,7 @@ const breadcrumbs = [
             background-color: var(--bg-secondary);
           "
         >
-          {article.publishedAt ? 'Vista previa' : 'Vista previa / borrador'}
+          {article.publishedAt ? ui.preview : ui.previewDraft}
         </span>
       )}
 
@@ -121,8 +123,8 @@ const breadcrumbs = [
     )}
 
     <!-- Updated date -->
-    <p class="mt-3 text-xs" style="color: var(--text-muted);">
-      Updated:{' '}
+    <p class="mt-3 text-xs" style="color: var(--text-secondary);">
+      {ui.updatedOn}{' '}
       <time datetime={article.updatedAt}>
         {new Date(article.updatedAt).toLocaleDateString(locale, {
           year: 'numeric',
@@ -141,12 +143,13 @@ const breadcrumbs = [
       class="py-12 text-center rounded-lg border"
       style="border-color: var(--border-color); color: var(--text-muted);"
     >
-      This article has no content yet.
+      {ui.noContent}
     </div>
   )}
 
   <!-- Prev / Next navigation -->
   <ArticleNav
+    locale={locale}
     prev={prevArticle
       ? { title: prevArticle.title, href: `/${locale}/${categorySlug}/${prevArticle.slug}` }
       : undefined}

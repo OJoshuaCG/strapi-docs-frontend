@@ -1,10 +1,13 @@
 ---
+import { getUi } from '@/lib/i18n/ui';
+
 interface Props {
   currentLocale: string;
   supportedLocales: string[];
 }
 
 const { currentLocale, supportedLocales } = Astro.props;
+const ui = getUi(currentLocale);
 
 const localeLabels: Record<string, string> = {
   es: 'ES',
@@ -47,7 +50,7 @@ function getLabel(locale: string): string {
       border-color: var(--border-color);
     "
     role="listbox"
-    aria-label="Select language"
+    aria-label={ui.selectLanguage}
   >
     {supportedLocales.map((locale) => {
       const isActive = locale === currentLocale;

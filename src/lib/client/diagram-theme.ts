@@ -123,7 +123,8 @@ export function showDiagramError(wrapper: HTMLElement, engine: string, error: un
   const message = document.createElement('p');
   message.className = 'diagram-error';
   message.setAttribute('role', 'status');
-  message.textContent = 'No se pudo mostrar el diagrama. Recarga la página; si el problema continúa, avisa al equipo de documentación.';
+  // El texto lo pone el servidor en el idioma de la página (render de Markdown).
+  message.textContent = wrapper.dataset['errorMessage'] ?? 'No se pudo mostrar el diagrama.';
   wrapper.appendChild(message);
   wrapper.dataset['rendered'] = 'true';
 }

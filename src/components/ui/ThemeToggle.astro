@@ -1,12 +1,18 @@
 ---
-// No props — purely client-side
+import { getUi } from '@/lib/i18n/ui';
+
+interface Props {
+  locale: string;
+}
+
+const ui = getUi(Astro.props.locale);
 ---
 
 <button
   id="theme-toggle"
   class="p-1.5 rounded-md transition-colors"
   style="color: var(--text-secondary);"
-  aria-label="Toggle color theme"
+  aria-label={ui.toggleTheme}
   type="button"
 >
   <!-- Sun icon (visible in dark mode) -->
