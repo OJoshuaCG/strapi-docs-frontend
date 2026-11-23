@@ -2,6 +2,7 @@
 import BaseLayout from './BaseLayout.astro';
 import Header from '@/components/layout/Header.astro';
 import Sidebar from '@/components/layout/Sidebar.astro';
+import SiteLogo from '@/components/ui/SiteLogo.astro';
 import TableOfContents from '@/components/layout/TableOfContents.astro';
 import Footer from '@/components/layout/Footer.astro';
 import type {
@@ -58,7 +59,7 @@ const {
   locale={locale}
   noindex={noindex}
 >
-  <div class="flex flex-col min-h-screen" style="background-color: var(--bg-primary);">
+  <div class="relative flex flex-col min-h-screen" style="background-color: var(--bg-primary);">
     <Header
       settings={settings}
       locale={locale}
@@ -66,22 +67,19 @@ const {
       showMenuButton={withSidebar}
     />
 
-    <div
-      class="flex flex-1"
-      style={`padding-top: var(--header-height, 3.5rem);`}
-    >
+    <div class="flex flex-1">
       {withSidebar && (<>
-      <!-- Sidebar -->
+      <!-- Sidebar: el logo va arriba del menú (no hay barra superior) -->
       <aside
         id="sidebar"
-        class="fixed left-0 top-0 h-full overflow-y-auto hidden lg:block z-30 border-r"
+        class="sidebar-fixed fixed left-0 top-0 h-full overflow-y-auto hidden lg:block z-30 border-r"
         style="
           width: var(--sidebar-width, 16rem);
-          padding-top: var(--header-height, 3.5rem);
           background-color: var(--bg-sidebar);
           border-color: var(--border-color);
         "
       >
+        <div class="mx-3 px-2 pt-6 pb-5 border-b" style="border-color: var(--border-color);"><SiteLogo settings={settings} locale={locale} size="sidebar" /></div>
         <Sidebar
           categories={sidebarCategories}
           sections={sections}
@@ -102,15 +100,15 @@ const {
       <!-- Mobile sidebar panel -->
       <aside
         id="mobile-sidebar"
-        class="fixed left-0 top-0 h-full overflow-y-auto z-30 border-r lg:hidden -translate-x-full transition-transform"
+        class="sidebar-fixed fixed left-0 top-0 h-full overflow-y-auto z-30 border-r lg:hidden -translate-x-full transition-transform"
         style="
           width: var(--sidebar-width, 16rem);
-          padding-top: var(--header-height, 3.5rem);
           background-color: var(--bg-sidebar);
           border-color: var(--border-color);
           transition-duration: var(--transition-duration, 0.2s);
         "
       >
+        <div class="mx-3 px-2 pt-6 pb-5 border-b" style="border-color: var(--border-color);"><SiteLogo settings={settings} locale={locale} size="sidebar" /></div>
         <Sidebar
           categories={sidebarCategories}
           sections={sections}
@@ -151,10 +149,11 @@ const {
                 class="hidden xl:block shrink-0 sticky overflow-y-auto overscroll-contain"
                 style="
                   width: var(--toc-width, 14rem);
-                  top: calc(var(--header-height, 3.5rem) + 2rem);
+                  top: 1.5rem;
                   height: fit-content;
-                  max-height: calc(100vh - var(--header-height, 3.5rem) - 4rem);
+                  max-height: calc(100vh - 3rem);
                   margin-left: 2rem;
+                  margin-top: 2.5rem;
                 "
               >
                 <TableOfContents entries={toc} locale={locale} />

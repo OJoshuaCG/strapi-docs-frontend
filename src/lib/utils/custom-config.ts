@@ -10,7 +10,8 @@ import type { DocumentationSpaceSetting } from '@/lib/domain/types';
  * Todo es opcional y se valida aquí: lo que falta o no es texto usa el respaldo.
  */
 
-type Hero = { title: string; subtitle: string | null };
+/** `customTitle`: el título viene de customConfig (si no, es el nombre del espacio de respaldo). */
+type Hero = { title: string; subtitle: string | null; customTitle: boolean };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -25,8 +26,10 @@ export function getHero(settings: DocumentationSpaceSetting | null, locale: stri
   const block = isRecord(config) && isRecord(config[locale]) ? config[locale] : {};
   const hero = isRecord(block.hero) ? block.hero : {};
 
+  const customTitle = text(hero.title);
   return {
-    title: text(hero.title) ?? settings?.siteName ?? 'Docs',
+    title: customTitle ?? settings?.siteName ?? 'Docs',
+    customTitle: customTitle !== null,
     // La descripción del espacio no se traduce: solo sirve de respaldo en el idioma por defecto,
     // para no mostrar un texto en español en la portada en inglés.
     subtitle:

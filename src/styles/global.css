@@ -49,7 +49,7 @@
     line-height: var(--heading-line-height, 1.25);
     margin-top: var(--heading-spacing-top, 2rem);
     margin-bottom: var(--heading-spacing-bottom, 0.75rem);
-    scroll-margin-top: calc(var(--header-height, 3.5rem) + 1rem);
+    scroll-margin-top: 1.5rem;
   }
 
   .prose-docs h1 { font-size: 2rem; }
@@ -552,4 +552,18 @@
 .diagram-viewer-canvas.is-dragging {
   cursor: grabbing;
   user-select: none;
+}
+
+/* Menú lateral con color fijo (DocsLayout.astro): redefine las variables del tema dentro del menú
+   con las del modo oscuro (theme.ts, --sidebar-*), así todo lo de adentro se lee sobre ese fondo. */
+.sidebar-fixed {
+  --bg-sidebar: var(--sidebar-bg);
+  --bg-secondary: var(--sidebar-surface);
+  --text-primary: var(--sidebar-text-primary);
+  --text-secondary: var(--sidebar-text-secondary);
+  /* El tenue del tema oscuro no alcanza contraste sobre este fondo: los títulos usan el secundario. */
+  --text-muted: var(--sidebar-text-secondary);
+  --border-color: var(--sidebar-border);
+  --color-brand-500: var(--sidebar-accent);
+  color-scheme: dark;
 }
