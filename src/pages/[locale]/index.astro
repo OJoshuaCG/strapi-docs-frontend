@@ -1,6 +1,7 @@
 ---
 import DocsLayout from '@/layouts/DocsLayout.astro';
 import Icon from '@/components/ui/Icon.astro';
+import CategoryCard from '@/components/ui/CategoryCard.astro';
 import SiteLogo from '@/components/ui/SiteLogo.astro';
 import { getSpaceSettings, getSections, getCategoriesWithArticles } from '@/lib/strapi/client';
 import { isValidLocale, appConfig } from '@/lib/utils/config';
@@ -41,12 +42,16 @@ const groups = sections
   .map((section) => {
     const cats = categories
       .filter((cat) => cat.documentation_section?.slug === section.slug && cat.articles.length > 0)
-      .map((cat) => ({ ...cat, iconName: firstIconName(cat.icon, section.icon), firstSlug: cat.articles[0]?.slug ?? '' }));
-    return { section, cats };
+      // La tarjeta solo lleva el icono propio de la categoría: heredar el de la sección repetía el mismo en todas.
+      .map((cat) => ({ ...cat, iconName: firstIconName(cat.icon), firstSlug: cat.articles[0]?.slug ?? '' }));
+    return { section, cats, iconName: firstIconName(section.icon) };
   })
   .filter((group) => group.cats.length > 0);
 
 const siteName = settings?.siteName ?? 'Docs';
+
+/** Tarjetas visibles por sección; las demás quedan tras «+ N categorías más». */
+const HOME_MAX = 4;
 ---
 
 <DocsLayout
@@ -83,40 +88,39 @@ const siteName = settings?.siteName ?? 'Docs';
 
   {groups.length > 0 ? (
     <>
-      <!-- Categorías por sección -->
-      {groups.map(({ section, cats }) => (
-        <section id={section.slug} class="mb-14 first:mt-6 scroll-mt-6">
-          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-5">
-            <h2 class="text-xl font-semibold" style="color: var(--text-primary);">{section.name}</h2>
-            {section.description && (
-              <p class="text-sm" style="color: var(--text-secondary);">{section.description}</p>
-            )}
-          </div>
+      <!-- Categorías por sección, como «Logo 3 · Base»: dos columnas y a lo más HOME_MAX tarjetas;
+           el resto se abre con «+ N categorías más» para que una sección grande no alargue la portada. -->
+      <div class="mx-auto" style="max-width: 56rem;">
+        {groups.map(({ section, cats, iconName }) => (
+          <section id={section.slug} class="mb-10 first:mt-6 scroll-mt-6">
+            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+              <h2 class="flex items-center gap-2 self-center text-xl font-semibold" style="color: var(--text-primary);">
+                {iconName && <span class="flex" style="color: var(--color-brand-500);"><Icon name={iconName} size={20} /></span>}
+                {section.name}
+              </h2>
+              {section.description && (
+                <p class="text-sm" style="color: var(--text-secondary);">{section.description}</p>
+              )}
+            </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cats.map((cat) => (
-              <a
-                href={`/${locale}/${cat.slug}/${cat.firstSlug}`}
-                class="group flex gap-4 p-5 border transition-all hover:shadow-md"
-                style="border-color: var(--border-color); background-color: var(--bg-primary); border-radius: calc(var(--border-radius, 0.5rem) * 1.5);"
-              >
-                {cat.iconName && (
-                  <span class="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: var(--bg-secondary); color: var(--color-brand-500);">
-                    <Icon name={cat.iconName} size={20} />
-                  </span>
-                )}
-                <span class="min-w-0 flex flex-col gap-1">
-                  <span class="font-semibold transition-colors group-hover:text-[var(--color-brand-500)]" style="color: var(--text-primary);">{cat.name}</span>
-                  {cat.description && (
-                    <span class="text-sm line-clamp-2" style="color: var(--text-secondary);">{cat.description}</span>
-                  )}
-                  <span class="text-xs mt-1 font-medium" style="color: var(--color-brand-500);">{ui.articleCount(cat.articles.length)}</span>
-                </span>
-              </a>
-            ))}
-          </div>
-        </section>
-      ))}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {cats.slice(0, HOME_MAX).map((cat) => (
+                <CategoryCard href={`/${locale}/${cat.slug}/${cat.firstSlug}`} name={cat.name} description={cat.description} iconName={cat.iconName} countLabel={ui.articleCount(cat.articles.length)} />
+              ))}
+            </div>
+            {cats.length > HOME_MAX && (
+              <details class="home-more mt-3">
+                <summary class="text-sm font-medium cursor-pointer" style="color: var(--color-brand-500);">{ui.moreCategories(cats.length - HOME_MAX)} →</summary>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {cats.slice(HOME_MAX).map((cat) => (
+                    <CategoryCard href={`/${locale}/${cat.slug}/${cat.firstSlug}`} name={cat.name} description={cat.description} iconName={cat.iconName} countLabel={ui.articleCount(cat.articles.length)} />
+                  ))}
+                </div>
+              </details>
+            )}
+          </section>
+        ))}
+      </div>
     </>
   ) : (
     <div class="flex flex-col items-center justify-center py-20 text-center" style="color: var(--text-muted);">

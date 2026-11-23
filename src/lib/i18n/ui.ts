@@ -4,6 +4,7 @@ import { appConfig } from '@/lib/utils/config';
 const dictionaries = {
   es: {
     articleCount: (n: number) => (n === 1 ? '1 artículo' : `${n} artículos`),
+    moreCategories: (n: number) => (n === 1 ? '+ 1 categoría más' : `+ ${n} categorías más`),
     otherSections: 'Otras secciones',
     breadcrumb: 'Ruta de navegación',
     openMenu: 'Abrir menú',
@@ -37,6 +38,7 @@ const dictionaries = {
   },
   en: {
     articleCount: (n: number) => (n === 1 ? '1 article' : `${n} articles`),
+    moreCategories: (n: number) => (n === 1 ? '+ 1 more category' : `+ ${n} more categories`),
     otherSections: 'Other sections',
     breadcrumb: 'Breadcrumb',
     openMenu: 'Open menu',

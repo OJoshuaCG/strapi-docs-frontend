@@ -414,6 +414,12 @@
   );
 }
 
+/* «+ N categorías más» de la portada: es un enlace de texto, sin el triángulo de <details>;
+   una vez abierto se oculta y quedan solo las tarjetas. */
+.home-more > summary { list-style: none; }
+.home-more > summary::-webkit-details-marker { display: none; }
+.home-more[open] > summary { display: none; }
+
 /* En oscuro el fondo de recuadro del tema es muy saturado: se mezcla más con el fondo. */
 .dark .prose-docs .callout-note {
   background-color: color-mix(in srgb, var(--callout-bg) 35%, var(--bg-primary));
