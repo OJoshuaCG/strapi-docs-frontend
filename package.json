@@ -16,6 +16,7 @@
     "@hpcc-js/wasm-graphviz": "1.29.2",
     "astro": "^5.7.7",
     "dompurify": "3.4.16",
+    "lucide-static": "0.460.0",
     "marked": "^18.0.2",
     "mermaid": "12.1.0",
     "shiki": "^1.29.2",

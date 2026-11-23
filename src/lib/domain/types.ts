@@ -128,6 +128,8 @@ export type DocumentationCategory = {
   slug: string;
   description: string | null;
   order: number;
+  /** Nombre de un icono de Lucide. El campo aún no existe en Strapi: mientras falte, se usa el de la sección. */
+  icon?: string | null;
   locale: string;
   publishedAt: string | null;
   createdAt: string;
