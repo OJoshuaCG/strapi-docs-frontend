@@ -143,14 +143,17 @@ const {
               <slot />
             </article>
 
-            <!-- TOC — desktop only -->
+            <!-- TOC — desktop only. Altura máxima y desplazamiento propio: con muchos encabezados
+                 los últimos quedaban fuera de la pantalla y no había forma de llegar a ellos. -->
             {toc.length > 0 && (
               <aside
-                class="hidden xl:block shrink-0 sticky"
+                data-toc-scroll
+                class="hidden xl:block shrink-0 sticky overflow-y-auto overscroll-contain"
                 style="
                   width: var(--toc-width, 14rem);
                   top: calc(var(--header-height, 3.5rem) + 2rem);
                   height: fit-content;
+                  max-height: calc(100vh - var(--header-height, 3.5rem) - 4rem);
                   margin-left: 2rem;
                 "
               >
