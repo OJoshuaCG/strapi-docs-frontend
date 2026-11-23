@@ -51,6 +51,25 @@ async function strapiGet<T>(path: string, options: FetchOptions = {}): Promise<T
   return res.json() as Promise<T>;
 }
 
+// Strapi devuelve como mucho 100 resultados por consulta (`rest.maxLimit` del back). Para listas que
+// crecen con la documentación (secciones, categorías, artículos de una categoría) se piden todas las
+// páginas; si no, a partir del resultado 101 desaparecen sin error.
+const PAGE_SIZE = 100;
+
+async function strapiGetAll<T>(path: string, options: FetchOptions = {}): Promise<T[]> {
+  const page = (n: number) =>
+    strapiGet<StrapiListResponse<T>>(path, {
+      ...options,
+      params: { ...options.params, 'pagination[page]': n, 'pagination[pageSize]': PAGE_SIZE },
+    });
+
+  const first = await page(1);
+  const pageCount = first.meta.pagination?.pageCount ?? 1;
+  if (pageCount <= 1) return first.data;
+  const rest = await Promise.all(Array.from({ length: pageCount - 1 }, (_, i) => page(i + 2)));
+  return first.data.concat(...rest.map((res) => res.data));
+}
+
 // ── Populate helpers ─────────────────────────────────────────────────────────
 
 function mediaPopulate(prefix: string): Record<string, string> {
@@ -93,18 +112,14 @@ export async function getSpaceSettings(): Promise<DocumentationSpaceSetting | nu
 import type { DocumentationSection } from '@/lib/domain/types';
 
 export async function getSections(locale: string): Promise<DocumentationSection[]> {
-  const res = await strapiGet<StrapiListResponse<DocumentationSection>>(
-    '/api/documentation-sections',
-    {
-      params: {
-        space: config.spaceSlug,
-        locale,
-        'sort': 'order:asc',
-        'pagination[pageSize]': 100,
-      },
-    }
-  );
-  return res.data;
+  return strapiGetAll<DocumentationSection>('/api/documentation-sections', {
+    params: {
+      space: config.spaceSlug,
+      locale,
+      // `id` desempata: con el mismo `order` en dos páginas, uno podría repetirse y otro faltar.
+      'sort': 'order:asc,id:asc',
+    },
+  });
 }
 
 // ── Categories ────────────────────────────────────────────────────────────────
@@ -118,8 +133,7 @@ export async function getCategoriesWithArticles(
   const params: Record<string, string | number | boolean | undefined> = {
     space: config.spaceSlug,
     locale,
-    'sort': 'order:asc',
-    'pagination[pageSize]': 100,
+    'sort': 'order:asc,id:asc',
     'populate[articles][fields][0]': 'title',
     'populate[articles][fields][1]': 'slug',
     'populate[articles][fields][2]': 'order',
@@ -131,12 +145,9 @@ export async function getCategoriesWithArticles(
     params['section'] = sectionSlug;
   }
 
-  const res = await strapiGet<StrapiListResponse<DocumentationCategory>>(
-    '/api/documentation-categories',
-    { params }
-  );
+  const categories = await strapiGetAll<DocumentationCategory>('/api/documentation-categories', { params });
 
-  return res.data.map((cat) => ({
+  return categories.map((cat) => ({
     ...cat,
     articles: (cat.articles ?? []).toSorted((a, b) => a.order - b.order),
   }));
@@ -224,37 +235,15 @@ export async function getArticlesByCategory(
   categorySlug: string,
   locale: string
 ): Promise<Pick<DocumentationArticle, 'id' | 'documentId' | 'title' | 'slug' | 'order'>[]> {
-  const res = await strapiGet<StrapiListResponse<DocumentationArticle>>(
-    '/api/documentation-articles',
-    {
-      params: {
-        space: config.spaceSlug,
-        locale,
-        'filters[category][slug][$eq]': categorySlug,
-        'sort': 'order:asc,title:asc',
-        'pagination[pageSize]': 100,
-        'fields[0]': 'title',
-        'fields[1]': 'slug',
-        'fields[2]': 'order',
-      },
-    }
-  );
-  return res.data;
-}
-
-export async function getAllArticleSlugs(locale: string): Promise<Pick<DocumentationArticle, 'slug' | 'title' | 'updatedAt'>[]> {
-  const res = await strapiGet<StrapiListResponse<DocumentationArticle>>(
-    '/api/documentation-articles',
-    {
-      params: {
-        space: config.spaceSlug,
-        locale,
-        'pagination[pageSize]': 100,
-        'fields[0]': 'slug',
-        'fields[1]': 'title',
-        'fields[2]': 'updatedAt',
-      },
-    }
-  );
-  return res.data;
+  return strapiGetAll<DocumentationArticle>('/api/documentation-articles', {
+    params: {
+      space: config.spaceSlug,
+      locale,
+      'filters[category][slug][$eq]': categorySlug,
+      'sort': 'order:asc,title:asc,id:asc',
+      'fields[0]': 'title',
+      'fields[1]': 'slug',
+      'fields[2]': 'order',
+    },
+  });
 }
