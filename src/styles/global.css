@@ -367,6 +367,31 @@
   }
 }
 
+/* Cambio de tema: barrido de izquierda a derecha con View Transitions, el mismo del front de
+   Cirox (ThemeToggle.astro lo dispara). La captura vieja se queda quieta y la nueva entra con una
+   máscara que avanza. */
+::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: theme-sweep 700ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  mask: linear-gradient(90deg, #000 45%, transparent 55%) 100% 0 / 300% 100% no-repeat;
+  mix-blend-mode: normal;
+}
+
+@keyframes theme-sweep {
+  to {
+    mask-position: 0 0;
+  }
+}
+
+/* Sin esto, los elementos con `transition` quedan en la captura con el color del tema anterior. */
+:root:active-view-transition * {
+  transition: none !important;
+}
+
 /* Portada «Acento de marca» (pages/[locale]/index.astro): brillo del color de marca detrás del
    título, que se desvanece sin bordes. Más intenso en oscuro, donde el fondo lo absorbe. */
 .home-hero::before {
