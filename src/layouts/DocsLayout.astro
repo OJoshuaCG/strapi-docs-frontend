@@ -26,6 +26,8 @@ interface Props {
   locale: string;
   supportedLocales: string[];
   noindex?: boolean;
+  /** La portada no lleva menú lateral: ella misma es el índice. */
+  withSidebar?: boolean;
 }
 
 const {
@@ -43,6 +45,7 @@ const {
   locale,
   supportedLocales,
   noindex = false,
+  withSidebar = true,
 } = Astro.props;
 ---
 
@@ -68,6 +71,7 @@ const {
       class="flex flex-1"
       style={`padding-top: var(--header-height, 3.5rem);`}
     >
+      {withSidebar && (<>
       <!-- Sidebar -->
       <aside
         id="sidebar"
@@ -113,6 +117,7 @@ const {
           locale={locale}
         />
       </aside>
+      </>)}
 
       <!-- Main content -->
       <main
@@ -120,8 +125,10 @@ const {
         style={`margin-left: 0;`}
       >
         <div
-          class="flex-1 lg:ml-[var(--sidebar-width,16rem)] min-w-0"
+          class:list={['flex-1 min-w-0', withSidebar && 'lg:ml-[var(--sidebar-width,16rem)]']}
         >
+          <!-- Franja de lado a lado sobre el contenido (la usa la portada) -->
+          <slot name="hero" />
           <div
             class="flex justify-center"
             style="padding: var(--content-padding-y, 2rem) var(--content-padding-x, 1.5rem);"
@@ -152,7 +159,7 @@ const {
       </main>
     </div>
 
-    <Footer settings={settings} style={`margin-left: var(--sidebar-width, 16rem);`} />
+    <Footer settings={settings} style={withSidebar ? 'margin-left: var(--sidebar-width, 16rem);' : undefined} />
   </div>
 
   <!-- Mobile sidebar toggle script -->

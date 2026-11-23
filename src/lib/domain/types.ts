@@ -251,6 +251,8 @@ export type DocumentationSpaceSetting = {
   headerLogoSize: 'sm' | 'md' | 'lg' | 'xl' | null;
   headerLinkText: string | null;
   headerLinkUrl: string | null;
+  /** JSON libre por idioma; se lee solo a través de `lib/utils/custom-config.ts`. */
+  customConfig?: unknown;
   footerText: string | null;
   createdAt: string;
   updatedAt: string;

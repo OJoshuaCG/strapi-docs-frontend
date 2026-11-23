@@ -325,3 +325,25 @@
     color: var(--color-brand-500);
   }
 }
+
+/* Portada «Acento de marca» (pages/[locale]/index.astro): brillo del color de marca detrás del
+   título, que se desvanece sin bordes. Más intenso en oscuro, donde el fondo lo absorbe. */
+.home-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 32rem;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 60% 100% at 50% 0%,
+    color-mix(in srgb, var(--color-brand-500) 14%, transparent),
+    transparent 70%
+  );
+}
+.dark .home-hero::before {
+  background: radial-gradient(
+    ellipse 60% 100% at 50% 0%,
+    color-mix(in srgb, var(--color-brand-500) 22%, transparent),
+    transparent 70%
+  );
+}
