@@ -2,17 +2,19 @@
 import ThemeToggle from '@/components/ui/ThemeToggle.astro';
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher.astro';
 import { resolveMediaUrl } from '@/lib/utils/config';
-import type { DocumentationSpaceSetting, DocumentationSection } from '@/lib/domain/types';
+import { getUi } from '@/lib/i18n/ui';
+import type { DocumentationSpaceSetting } from '@/lib/domain/types';
 
 interface Props {
   settings: DocumentationSpaceSetting | null;
-  sections: DocumentationSection[];
-  activeSectionSlug?: string;
   locale: string;
   supportedLocales: string[];
+  /** Solo las páginas con menú lateral lo abren en el celular. */
+  showMenuButton?: boolean;
 }
 
-const { settings, sections, activeSectionSlug, locale, supportedLocales } = Astro.props;
+const { settings, locale, supportedLocales, showMenuButton = true } = Astro.props;
+const ui = getUi(locale);
 
 const logo = settings?.sidebarLogo;
 const siteName = settings?.siteName ?? 'Docs';
@@ -30,18 +32,20 @@ const ctaUrl = settings?.headerLinkUrl;
 >
   <div class="flex items-center h-full px-4 gap-4 max-w-full">
     <!-- Mobile menu button -->
-    <button
-      id="mobile-menu-btn"
-      class="lg:hidden p-1.5 rounded-md transition-colors"
-      style="color: var(--text-secondary);"
-      aria-label="Open menu"
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
-    </button>
+    {showMenuButton && (
+      <button
+        id="mobile-menu-btn"
+        class="lg:hidden p-1.5 rounded-md transition-colors"
+        style="color: var(--text-secondary);"
+        aria-label={ui.openMenu}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    )}
 
     <!-- Logo / Site name -->
     <a
@@ -62,34 +66,6 @@ const ctaUrl = settings?.headerLinkUrl;
         <span class="text-base">{siteName}</span>
       )}
     </a>
-
-    <!-- Divider -->
-    {sections.length > 0 && (
-      <div class="hidden lg:block h-5 w-px" style="background-color: var(--border-color);"></div>
-    )}
-
-    <!-- Sections nav -->
-    <nav class="hidden lg:flex items-center gap-1 overflow-x-auto flex-1" aria-label="Sections">
-      {sections.map((section) => {
-        const isActive = section.slug === activeSectionSlug;
-        return (
-          <a
-            href={`/${locale}?section=${section.slug}`}
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[0.8rem] font-medium transition-colors whitespace-nowrap"
-            style={isActive
-              ? 'background-color: color-mix(in srgb, var(--color-brand-500) 15%, transparent); color: var(--color-brand-500);'
-              : 'color: var(--text-secondary);'
-            }
-            aria-current={isActive ? 'page' : undefined}
-          >
-            {section.icon && (
-              <span class="text-base" aria-hidden="true">{section.icon}</span>
-            )}
-            {section.name}
-          </a>
-        );
-      })}
-    </nav>
 
     <div class="ml-auto flex items-center gap-2">
       <!-- External CTA -->

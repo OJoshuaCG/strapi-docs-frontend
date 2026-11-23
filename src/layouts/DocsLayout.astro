@@ -61,10 +61,9 @@ const {
   <div class="flex flex-col min-h-screen" style="background-color: var(--bg-primary);">
     <Header
       settings={settings}
-      sections={sections}
-      activeSectionSlug={activeSectionSlug}
       locale={locale}
       supportedLocales={supportedLocales}
+      showMenuButton={withSidebar}
     />
 
     <div
@@ -85,6 +84,8 @@ const {
       >
         <Sidebar
           categories={sidebarCategories}
+          sections={sections}
+          activeSectionSlug={activeSectionSlug}
           activeCategorySlug={activeCategorySlug}
           activeArticleSlug={activeArticleSlug}
           locale={locale}
@@ -112,6 +113,8 @@ const {
       >
         <Sidebar
           categories={sidebarCategories}
+          sections={sections}
+          activeSectionSlug={activeSectionSlug}
           activeCategorySlug={activeCategorySlug}
           activeArticleSlug={activeArticleSlug}
           locale={locale}
