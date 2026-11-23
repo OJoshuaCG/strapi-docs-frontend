@@ -3,6 +3,7 @@ import { Graphviz } from '@hpcc-js/wasm-graphviz';
 import {
   brandTintedSurface,
   createSerialRunner,
+  fitDiagram,
   hexString,
   readSource,
   resolveRgb,
@@ -208,6 +209,7 @@ async function renderAllOnce(wrappers: HTMLElement[]): Promise<void> {
       // Mismo nombre que su contenedor, que el servidor ya puso en el idioma de la página.
       svgEl.setAttribute('aria-label', wrapper.getAttribute('aria-label') ?? '');
       showDiagram(wrapper, svgEl);
+      fitDiagram(wrapper, svgEl);
       liftClusterTitles(svgEl);
     } catch (error) {
       showDiagramError(wrapper, 'Graphviz', error);

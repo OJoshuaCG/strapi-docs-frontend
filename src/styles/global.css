@@ -303,22 +303,11 @@
     fill: var(--bg-secondary);
   }
 
-  /* On narrow screens, shrink a wide diagram toward the content width but
-     never below 35rem (~10px text at the default sizes); past that it scrolls
-     horizontally. Scaling to fit made text ~7px, unreadable. Diagrams are
-     two-dimensional content, exempt from reflow (WCAG 1.4.10). Never scales
-     a small diagram up beyond its natural width (--diagram-width, set by the
-     client script). */
+  /* El tamaño lo fija fitDiagram (diagram-theme.ts): cabe a lo ancho y hasta una altura máxima;
+     si para caber queda chico, aparece «Ampliar» y el visor lo muestra a tamaño real. */
   @media (max-width: 768px) {
     .diagram-wrapper {
       padding: 1rem 0.5rem;
-    }
-
-    .diagram-wrapper svg {
-      min-width: 0;
-      width: min(var(--diagram-width, 100%), max(35rem, 100%));
-      max-width: none;
-      height: auto;
     }
   }
 
@@ -403,4 +392,139 @@
 /* En oscuro el fondo de recuadro del tema es muy saturado: se mezcla más con el fondo. */
 .dark .prose-docs .callout-note {
   background-color: color-mix(in srgb, var(--callout-bg) 35%, var(--bg-primary));
+}
+
+/* Botón «Ampliar» de los diagramas reducidos y visor a tamaño real (lib/client/diagram-theme.ts). */
+.diagram-wrapper[data-expandable="true"] {
+  padding-bottom: 3.5rem;
+}
+.diagram-expand {
+  display: none;
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius, 0.5rem);
+  background-color: var(--bg-primary);
+  color: var(--color-brand-500);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.diagram-wrapper[data-expandable="true"] .diagram-expand {
+  display: inline-flex;
+}
+.diagram-expand:hover {
+  border-color: var(--color-brand-500);
+}
+.diagram-expand:focus-visible,
+.diagram-viewer button:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+.diagram-viewer {
+  position: fixed;
+  inset: 1.5rem;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: calc(var(--border-radius, 0.5rem) * 1.5);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  box-shadow: 0 24px 64px rgb(15 23 42 / 0.3);
+}
+.diagram-viewer:not([open]) {
+  display: none;
+}
+.diagram-viewer::backdrop {
+  background: rgb(15 23 42 / 0.6);
+}
+.diagram-viewer-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.diagram-viewer-title {
+  flex: 1;
+  padding-left: 0.375rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.diagram-viewer-percent {
+  min-width: 3.25rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+.diagram-viewer-bar button {
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius, 0.5rem);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.diagram-viewer-canvas {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  justify-content: safe center;
+  align-items: safe center;
+  padding: 1.5rem;
+  background-color: var(--bg-secondary);
+}
+.diagram-viewer-canvas svg {
+  display: block;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .diagram-viewer { inset: 0; border-radius: 0; }
+}
+
+/* Diagrama más alto que la altura máxima: se corta y se desvanece hacia «Ampliar». */
+.diagram-wrapper[data-cropped="true"] {
+  max-height: var(--diagram-max-h);
+  overflow: hidden;
+  align-items: flex-start;
+}
+.diagram-wrapper[data-cropped="true"]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bg-secondary) 70%);
+}
+.diagram-expand {
+  z-index: 1;
+}
+
+/* Visor: se arrastra con el botón izquierdo (diagram-theme.ts, enableDragToPan). */
+.diagram-viewer-canvas {
+  cursor: grab;
+}
+.diagram-viewer-canvas.is-dragging {
+  cursor: grabbing;
+  user-select: none;
 }

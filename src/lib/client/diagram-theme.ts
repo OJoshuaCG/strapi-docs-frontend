@@ -110,11 +110,7 @@ export function showDiagram(wrapper: HTMLElement, svg: string | SVGSVGElement): 
     wrapper.appendChild(svg);
   }
   wrapper.dataset['rendered'] = 'true';
-  const svgEl = wrapper.querySelector<SVGSVGElement>(':scope > svg');
-  // Natural width, for the mobile rule that never scales a diagram up.
-  const naturalWidth = svgEl?.viewBox.baseVal?.width;
-  if (svgEl && naturalWidth) svgEl.style.setProperty('--diagram-width', `${naturalWidth}px`);
-  return svgEl;
+  return wrapper.querySelector<SVGSVGElement>(':scope > svg');
 }
 
 export function showDiagramError(wrapper: HTMLElement, engine: string, error: unknown): void {
@@ -127,4 +123,179 @@ export function showDiagramError(wrapper: HTMLElement, engine: string, error: un
   message.textContent = wrapper.dataset['errorMessage'] ?? 'No se pudo mostrar el diagrama.';
   wrapper.appendChild(message);
   wrapper.dataset['rendered'] = 'true';
+}
+
+// ── Tamaño en el artículo y visor «Ampliar» ──────────────────────────────────
+// A lo ancho el diagrama se reduce lo que haga falta: nunca hay desplazamiento lateral. A lo alto se
+// reduce hasta el 75 % como mucho, para que la letra se siga leyendo; si aun así pasa de la altura
+// máxima, se corta con un desvanecido. Si quedó por debajo del 80 % o cortado, aparece «Ampliar», que
+// lo abre a tamaño real en un visor con zoom. Los textos de los botones los pone el servidor en el
+// contenedor (data-*), ya en el idioma de la página.
+
+const MAX_HEIGHT_PX = 640;
+const MAX_HEIGHT_VIEWPORT = 0.7;
+const MIN_SCALE_FOR_HEIGHT = 0.75;
+const EXPAND_BELOW = 0.8;
+
+const refitters = new WeakMap<HTMLElement, () => void>();
+
+function naturalSize(svgEl: SVGSVGElement): { width: number; height: number } | null {
+  const box = svgEl.viewBox.baseVal;
+  return box && box.width && box.height ? { width: box.width, height: box.height } : null;
+}
+
+function availableWidth(wrapper: HTMLElement): number {
+  const style = getComputedStyle(wrapper);
+  return wrapper.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+}
+
+export function fitDiagram(wrapper: HTMLElement, svgEl: SVGSVGElement): void {
+  const size = naturalSize(svgEl);
+  if (!size) return;
+  ensureExpandButton(wrapper);
+
+  const fit = () => {
+    const current = wrapper.querySelector<SVGSVGElement>(':scope > svg');
+    const natural = current && naturalSize(current);
+    if (!current || !natural) return;
+    const maxHeight = Math.min(MAX_HEIGHT_PX, window.innerHeight * MAX_HEIGHT_VIEWPORT);
+    const widthFit = Math.min(1, availableWidth(wrapper) / natural.width);
+    const heightFit = Math.max(MIN_SCALE_FOR_HEIGHT, Math.min(1, maxHeight / natural.height));
+    const scale = Math.min(widthFit, heightFit);
+    const height = Math.floor(natural.height * scale);
+    const cropped = height > maxHeight;
+    current.setAttribute('width', String(Math.floor(natural.width * scale)));
+    current.setAttribute('height', String(height));
+    current.style.removeProperty('max-width');
+    wrapper.dataset['expandable'] = scale < EXPAND_BELOW || cropped ? 'true' : 'false';
+    wrapper.dataset['cropped'] = cropped ? 'true' : 'false';
+    if (cropped) {
+      // Alto visible = altura máxima del diagrama + el relleno del contenedor (incluye el del botón).
+      const style = getComputedStyle(wrapper);
+      wrapper.style.setProperty('--diagram-max-h', `${maxHeight + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)}px`);
+    }
+  };
+
+  fit();
+  // Un solo observador por contenedor: al cambiar de tema se vuelve a dibujar y basta con reajustar.
+  if (!refitters.has(wrapper)) {
+    refitters.set(wrapper, fit);
+    let lastWidth = wrapper.clientWidth;
+    new ResizeObserver(() => {
+      if (wrapper.clientWidth === lastWidth) return;
+      lastWidth = wrapper.clientWidth;
+      refitters.get(wrapper)?.();
+    }).observe(wrapper);
+  } else {
+    refitters.set(wrapper, fit);
+  }
+}
+
+const EXPAND_ICON =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
+
+function ensureExpandButton(wrapper: HTMLElement): void {
+  if (wrapper.querySelector(':scope > .diagram-expand')) return;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'diagram-expand';
+  button.innerHTML = EXPAND_ICON;
+  const label = document.createElement('span');
+  label.textContent = wrapper.dataset['expand'] ?? '';
+  button.appendChild(label);
+  button.addEventListener('click', () => openViewer(wrapper));
+  wrapper.appendChild(button);
+}
+
+let viewer: HTMLDialogElement | null = null;
+
+function openViewer(wrapper: HTMLElement): void {
+  const source = wrapper.querySelector<SVGSVGElement>(':scope > svg');
+  const natural = source && naturalSize(source);
+  if (!source || !natural) return;
+  const text = (key: string) => wrapper.dataset[key] ?? '';
+
+  viewer?.remove();
+  viewer = document.createElement('dialog');
+  viewer.className = 'diagram-viewer';
+  viewer.setAttribute('aria-label', wrapper.getAttribute('aria-label') ?? '');
+
+  const bar = document.createElement('div');
+  bar.className = 'diagram-viewer-bar';
+  const title = document.createElement('span');
+  title.className = 'diagram-viewer-title';
+  title.textContent = wrapper.getAttribute('aria-label') ?? '';
+  const percent = document.createElement('span');
+  percent.className = 'diagram-viewer-percent';
+  const makeButton = (label: string, content: string) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', label);
+    b.textContent = content;
+    return b;
+  };
+  const zoomOut = makeButton(text('zoomOut'), '−');
+  const zoomIn = makeButton(text('zoomIn'), '+');
+  const fitButton = makeButton(text('zoomFit'), text('zoomFit'));
+  const close = makeButton(text('close'), '✕');
+  bar.append(title, zoomOut, percent, zoomIn, fitButton, close);
+
+  const canvas = document.createElement('div');
+  // La clase del motor conserva los retoques de global.css (esquinas de nodos, títulos de grupo).
+  const engineClass = wrapper.classList.contains('mermaid-wrapper') ? 'mermaid-wrapper' : 'graphviz-wrapper';
+  canvas.className = `diagram-viewer-canvas ${engineClass}`;
+  canvas.tabIndex = 0;
+  enableDragToPan(canvas);
+  const clone = source.cloneNode(true) as SVGSVGElement;
+  canvas.appendChild(clone);
+  viewer.append(bar, canvas);
+  document.body.appendChild(viewer);
+
+  let zoom = 1;
+  const apply = () => {
+    clone.setAttribute('width', String(Math.round(natural.width * zoom)));
+    clone.setAttribute('height', String(Math.round(natural.height * zoom)));
+    percent.textContent = `${Math.round(zoom * 100)} %`;
+  };
+  const setZoom = (value: number) => { zoom = Math.min(3, Math.max(0.25, value)); apply(); };
+  zoomOut.addEventListener('click', () => setZoom(zoom - 0.25));
+  zoomIn.addEventListener('click', () => setZoom(zoom + 0.25));
+  fitButton.addEventListener('click', () => {
+    const pad = 48;
+    setZoom(Math.min(1, (canvas.clientWidth - pad) / natural.width, (canvas.clientHeight - pad) / natural.height));
+  });
+  close.addEventListener('click', () => viewer?.close());
+  // Clic en el fondo oscuro (fuera del visor) también cierra.
+  viewer.addEventListener('click', (event) => { if (event.target === viewer) viewer?.close(); });
+  viewer.addEventListener('close', () => { viewer?.remove(); viewer = null; wrapper.querySelector<HTMLElement>('.diagram-expand')?.focus(); });
+
+  apply();
+  viewer.showModal();
+}
+
+/** Arrastrar con el botón izquierdo mueve el diagrama, como una mano. Solo con mouse: en pantallas
+ *  táctiles el desplazamiento con el dedo ya lo hace el navegador. */
+function enableDragToPan(canvas: HTMLElement): void {
+  let start: { x: number; y: number; left: number; top: number } | null = null;
+
+  canvas.addEventListener('pointerdown', (event) => {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return;
+    start = { x: event.clientX, y: event.clientY, left: canvas.scrollLeft, top: canvas.scrollTop };
+    canvas.setPointerCapture(event.pointerId);
+    canvas.classList.add('is-dragging');
+    event.preventDefault(); // sin selección de texto mientras se arrastra
+  });
+  canvas.addEventListener('pointermove', (event) => {
+    if (!start) return;
+    canvas.scrollLeft = start.left - (event.clientX - start.x);
+    canvas.scrollTop = start.top - (event.clientY - start.y);
+  });
+  const stop = (event: PointerEvent) => {
+    if (!start) return;
+    start = null;
+    canvas.classList.remove('is-dragging');
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+  };
+  canvas.addEventListener('pointerup', stop);
+  canvas.addEventListener('pointercancel', stop);
 }
