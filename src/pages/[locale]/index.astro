@@ -74,7 +74,7 @@ const HOME_MAX = 4;
         <!-- Con logo y sin título propio, el título sería el nombre del sitio repetido bajo el logo:
              se deja solo para lectores de pantalla y buscadores. -->
         <h1
-          class:list={['text-4xl sm:text-[2.625rem] font-bold', settings?.sidebarLogo && !hero.customTitle && 'sr-only']}
+          class:list={['text-4xl sm:text-[2.625rem] font-bold', (settings?.sidebarLogo || settings?.logoLightMode) && !hero.customTitle && 'sr-only']}
           style="color: var(--text-primary); line-height: var(--heading-line-height, 1.2);"
         >
           {hero.title}

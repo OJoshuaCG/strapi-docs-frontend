@@ -128,7 +128,7 @@ export type DocumentationCategory = {
   slug: string;
   description: string | null;
   order: number;
-  /** Nombre de un icono de Lucide. El campo aún no existe en Strapi: mientras falte, se usa el de la sección. */
+  /** Nombre de un icono de Lucide (no se traduce). Vacío o desconocido = la tarjeta va sin icono. */
   icon?: string | null;
   locale: string;
   publishedAt: string | null;
@@ -257,7 +257,10 @@ export type DocumentationSpaceSetting = {
   createdAt: string;
   updatedAt: string;
   favicon?: MediaObject | null;
+  /** Logo para fondo oscuro: modo oscuro y menú lateral (que siempre es oscuro). */
   sidebarLogo?: MediaObject | null;
+  /** Logo para fondo claro (modo claro). Si falta, se usa `sidebarLogo`. */
+  logoLightMode?: MediaObject | null;
   ogDefaultImage?: MediaObject | null;
   colors?: ThemeColors;
   typography?: ThemeTypography;

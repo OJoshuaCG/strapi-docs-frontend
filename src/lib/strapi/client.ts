@@ -96,10 +96,8 @@ export async function getSpaceSettings(): Promise<DocumentationSpaceSetting | nu
         'populate[spacing]': 'true',
         'populate[layout]': 'true',
         ...mediaPopulate('favicon'),
-        'populate[sidebarLogo][fields][0]': 'url',
-        'populate[sidebarLogo][fields][1]': 'alternativeText',
-        'populate[sidebarLogo][fields][2]': 'width',
-        'populate[sidebarLogo][fields][3]': 'height',
+        ...mediaPopulate('sidebarLogo'),
+        ...mediaPopulate('logoLightMode'),
         ...mediaPopulate('ogDefaultImage'),
       },
     }

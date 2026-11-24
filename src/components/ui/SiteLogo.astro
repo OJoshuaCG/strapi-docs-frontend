@@ -11,7 +11,13 @@ interface Props {
 }
 
 const { settings, locale, size = 'inline' } = Astro.props;
-const logo = settings?.sidebarLogo;
+// `sidebarLogo` es el logo para fondo oscuro; `logoLightMode`, el de fondo claro. El menú lateral
+// siempre es oscuro, así que solo él ignora el de modo claro. Sin logo claro, se usa el oscuro en los dos.
+const dark = settings?.sidebarLogo ?? settings?.logoLightMode;
+const light = size === 'sidebar' ? null : settings?.logoLightMode;
+const logos = light && dark && light.url !== dark.url
+  ? [{ media: light, class: 'dark:hidden' }, { media: dark, class: 'hidden dark:block' }]
+  : dark ? [{ media: dark, class: '' }] : [];
 const siteName = settings?.siteName ?? 'Docs';
 // Tamaño elegido en Strapi (headerLogoSize), escalado según dónde se muestra. Nunca más ancho que
 // su espacio (max-width), para logos muy horizontales.
@@ -26,15 +32,17 @@ const Tag = isLink ? 'a' : 'span';
   class="inline-flex items-center gap-2 max-w-full shrink-0 font-semibold"
   style="color: var(--text-primary);"
 >
-  {logo ? (
-    <img
-      src={resolveMediaUrl(logo.url)}
-      alt={logo.alternativeText ?? siteName}
-      width={logo.width}
-      height={logo.height}
-      class="object-contain max-w-full"
-      style={`height: ${height}; width: auto;`}
-    />
+  {logos.length > 0 ? (
+    logos.map(({ media, class: themeClass }) => (
+      <img
+        src={resolveMediaUrl(media.url)}
+        alt={media.alternativeText ?? siteName}
+        width={media.width}
+        height={media.height}
+        class:list={['object-contain max-w-full', themeClass]}
+        style={`height: ${height}; width: auto;`}
+      />
+    ))
   ) : (
     size !== 'hero' && <span class:list={[size === 'sidebar' ? 'text-lg' : 'text-base']}>{siteName}</span>
   )}
