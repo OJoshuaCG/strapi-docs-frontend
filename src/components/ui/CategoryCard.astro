@@ -1,0 +1,27 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+
+interface Props {
+  href: string;
+  name: string;
+  description?: string | null;
+  /** Icono propio de la categoría; sin él la tarjeta va sin icono (no se hereda el de la sección). */
+  iconName?: string | null;
+  countLabel: string;
+}
+
+const { href, name, description, iconName, countLabel } = Astro.props;
+---
+
+<a
+  href={href}
+  class="group flex flex-col gap-1 px-4 py-3.5 border transition-all hover:shadow-md"
+  style="border-color: var(--border-color); background-color: var(--bg-primary); border-radius: calc(var(--border-radius, 0.5rem) * 1.5);"
+>
+  <span class="flex items-center gap-2">
+    {iconName && <span class="shrink-0 flex" style="color: var(--color-brand-500);"><Icon name={iconName} size={17} /></span>}
+    <span class="font-semibold transition-colors group-hover:text-[var(--color-brand-500)]" style="color: var(--text-primary);">{name}</span>
+  </span>
+  {description && <span class="text-sm line-clamp-2" style="color: var(--text-secondary);">{description}</span>}
+  <span class="text-xs font-medium" style="color: var(--color-brand-500);">{countLabel}</span>
+</a>

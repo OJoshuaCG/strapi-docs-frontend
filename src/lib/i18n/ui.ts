@@ -1,0 +1,81 @@
+import { appConfig } from '@/lib/utils/config';
+
+/** Textos de la interfaz (no son contenido: el contenido viene de Strapi). Uno por idioma. */
+const dictionaries = {
+  es: {
+    articleCount: (n: number) => (n === 1 ? '1 artículo' : `${n} artículos`),
+    moreCategories: (n: number) => (n === 1 ? '+ 1 categoría más' : `+ ${n} categorías más`),
+    otherSections: 'Otras secciones',
+    breadcrumb: 'Ruta de navegación',
+    openMenu: 'Abrir menú',
+    sidebarNav: 'Artículos de la sección',
+    emptySection: 'No hay contenido en esta sección.',
+    emptyTitle: 'Aún no hay contenido',
+    emptyText: 'Publica artículos en Strapi para verlos aquí.',
+    updatedOn: 'Actualizado el',
+    noContent: 'Este artículo aún no tiene contenido.',
+    preview: 'Vista previa',
+    previewDraft: 'Vista previa / borrador',
+    previous: 'Anterior',
+    next: 'Siguiente',
+    articleNav: 'Artículo anterior y siguiente',
+    onThisPage: 'En esta página',
+    copy: 'Copiar',
+    copied: 'Copiado',
+    copyError: 'No se pudo copiar',
+    copyCode: 'Copiar código',
+    diagram: 'Diagrama',
+    diagramError: 'No se pudo mostrar el diagrama. Recarga la página; si el problema continúa, avisa al equipo de documentación.',
+    important: 'Importante:',
+    note: 'Nota',
+    expand: 'Ampliar',
+    zoomIn: 'Acercar',
+    zoomOut: 'Alejar',
+    zoomFit: 'Ajustar',
+    close: 'Cerrar',
+    selectLanguage: 'Elegir idioma',
+    toggleTheme: 'Cambiar entre tema claro y oscuro',
+  },
+  en: {
+    articleCount: (n: number) => (n === 1 ? '1 article' : `${n} articles`),
+    moreCategories: (n: number) => (n === 1 ? '+ 1 more category' : `+ ${n} more categories`),
+    otherSections: 'Other sections',
+    breadcrumb: 'Breadcrumb',
+    openMenu: 'Open menu',
+    sidebarNav: 'Section articles',
+    emptySection: 'There is no content in this section yet.',
+    emptyTitle: 'No content yet',
+    emptyText: 'Publish articles in Strapi to see them here.',
+    updatedOn: 'Updated',
+    noContent: 'This article has no content yet.',
+    preview: 'Preview',
+    previewDraft: 'Preview / draft',
+    previous: 'Previous',
+    next: 'Next',
+    articleNav: 'Previous and next article',
+    onThisPage: 'On this page',
+    copy: 'Copy',
+    copied: 'Copied',
+    copyError: 'Could not copy',
+    copyCode: 'Copy code',
+    diagram: 'Diagram',
+    diagramError: 'The diagram could not be displayed. Reload the page; if the problem persists, let the documentation team know.',
+    important: 'Important:',
+    note: 'Note',
+    expand: 'Expand',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    zoomFit: 'Fit',
+    close: 'Close',
+    selectLanguage: 'Select language',
+    toggleTheme: 'Toggle light and dark theme',
+  },
+} satisfies Record<string, Record<string, unknown>>;
+
+export type UiDictionary = (typeof dictionaries)['es'];
+
+/** Diccionario del idioma; si no hay uno para ese idioma, el del idioma por defecto o el inglés. */
+export function getUi(locale: string): UiDictionary {
+  const all = dictionaries as Record<string, UiDictionary>;
+  return all[locale] ?? all[appConfig.defaultLocale] ?? dictionaries.en;
+}

@@ -42,10 +42,12 @@ getArticleByDocumentId(documentId, locale, status?): Promise<DocumentationArticl
 
 // Artículos de una categoría (para navegación prev/next)
 getArticlesByCategory(categorySlug, locale): Promise<DocumentationArticle[]>
-
-// Todos los slugs de artículos (útil para sitemap)
-getAllArticleSlugs(locale): Promise<{slug, title, updatedAt}[]>
 ```
+
+Las listas que crecen con la documentación (secciones, categorías y artículos de una categoría) se
+piden con `strapiGetAll`, que recorre todas las páginas: Strapi devuelve como mucho 100 resultados por
+consulta (`rest.maxLimit` del back) y sin esto, a partir del 101, desaparecerían sin error. Ordena
+siempre con un desempate (`id:asc`) para que ningún registro se repita ni falte entre páginas.
 
 ### Cómo añadir un nuevo endpoint
 

@@ -1,19 +1,22 @@
 ---
+import { getUi } from '@/lib/i18n/ui';
 import type { TocEntry } from '@/lib/domain/types';
 
 interface Props {
   entries: TocEntry[];
+  locale: string;
 }
 
-const { entries } = Astro.props;
+const { entries, locale } = Astro.props;
+const ui = getUi(locale);
 ---
 
 <div>
-  <p class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--text-muted);">
-    En esta página
+  <p class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--text-secondary);">
+    {ui.onThisPage}
   </p>
 
-  <nav aria-label="Table of contents">
+  <nav aria-label={ui.onThisPage}>
     <ul class="space-y-1">
       {entries.map((entry) => (
         <li>
@@ -38,12 +41,25 @@ const { entries } = Astro.props;
   const links = document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]');
   const headings = document.querySelectorAll<HTMLElement>('.prose-docs h2, .prose-docs h3, .prose-docs h4, .prose-docs h5, .prose-docs h6');
 
+  const scroller = document.querySelector<HTMLElement>('[data-toc-scroll]');
+
+  // Con un índice más alto que la pantalla, el encabezado activo se mantiene a la vista dentro del
+  // índice (sin mover la página).
+  function keepVisible(link: HTMLElement) {
+    if (!scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+    const l = link.getBoundingClientRect();
+    const s = scroller.getBoundingClientRect();
+    if (l.top < s.top) scroller.scrollTop -= s.top - l.top + 8;
+    else if (l.bottom > s.bottom) scroller.scrollTop += l.bottom - s.bottom + 8;
+  }
+
   function setActive(id: string) {
     links.forEach((link) => {
       const isActive = link.getAttribute('href') === `#${id}`;
       if (isActive) {
         link.style.color = 'var(--color-brand-500)';
         link.style.fontWeight = '500';
+        keepVisible(link);
       } else {
         link.style.color = 'var(--text-secondary)';
         link.style.fontWeight = '';

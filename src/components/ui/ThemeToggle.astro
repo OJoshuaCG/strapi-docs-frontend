@@ -1,12 +1,18 @@
 ---
-// No props — purely client-side
+import { getUi } from '@/lib/i18n/ui';
+
+interface Props {
+  locale: string;
+}
+
+const ui = getUi(Astro.props.locale);
 ---
 
 <button
   id="theme-toggle"
   class="p-1.5 rounded-md transition-colors"
   style="color: var(--text-secondary);"
-  aria-label="Toggle color theme"
+  aria-label={ui.toggleTheme}
   type="button"
 >
   <!-- Sun icon (visible in dark mode) -->
@@ -65,6 +71,11 @@
   applyTheme(isDark);
 
   btn?.addEventListener('click', () => {
-    applyTheme(!document.documentElement.classList.contains('dark'));
+    const toggle = () => applyTheme(!document.documentElement.classList.contains('dark'));
+    // El tema nuevo entra con un barrido (global.css, «Cambio de tema»), igual que en el front de Cirox.
+    // Sin soporte del navegador o con movimiento reducido, cambia de golpe.
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!document.startViewTransition || reduceMotion) toggle();
+    else document.startViewTransition(toggle);
   });
 </script>

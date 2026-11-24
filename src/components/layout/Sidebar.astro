@@ -1,20 +1,27 @@
 ---
-import type { SidebarCategory } from '@/lib/domain/types';
+import Icon from '@/components/ui/Icon.astro';
+import { getUi } from '@/lib/i18n/ui';
+import type { DocumentationSection, SidebarCategory } from '@/lib/domain/types';
 
 interface Props {
   categories: SidebarCategory[];
+  sections: DocumentationSection[];
+  activeSectionSlug?: string;
   activeCategorySlug?: string;
   activeArticleSlug?: string;
   locale: string;
 }
 
-const { categories, activeCategorySlug, activeArticleSlug, locale } = Astro.props;
+const { categories, sections, activeSectionSlug, activeCategorySlug, activeArticleSlug, locale } = Astro.props;
+const ui = getUi(locale);
+// Sin enlaces de sección en la barra superior: aquí se cambia de sección (lleva a su lugar en la portada).
+const otherSections = sections.filter((section) => section.slug !== activeSectionSlug);
 ---
 
-<nav class="py-4 px-3" aria-label="Documentation navigation">
+<nav class="py-4 px-3" aria-label={ui.sidebarNav}>
   {categories.length === 0 && (
     <p class="text-sm px-2 py-4" style="color: var(--text-muted);">
-      No hay contenido en esta sección.
+      {ui.emptySection}
     </p>
   )}
 
@@ -63,6 +70,29 @@ const { categories, activeCategorySlug, activeArticleSlug, locale } = Astro.prop
     );
   })}
 </nav>
+
+{otherSections.length > 0 && (
+  <nav class="mx-3 mb-6 pt-4 border-t" style="border-color: var(--border-color);" aria-label={ui.otherSections}>
+    <p class="px-2 mb-1 text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">
+      {ui.otherSections}
+    </p>
+    <ul class="space-y-px">
+      {otherSections.map((section) => (
+        <li>
+          <a
+            href={`/${locale}#${section.slug}`}
+            class="flex items-center gap-2 px-2 py-[0.3125rem] rounded-md text-[0.75rem] leading-[1.375rem] transition-colors hover:bg-[var(--bg-secondary)]"
+            style="color: var(--text-secondary);"
+          >
+            <Icon name={section.icon} size={14} class="shrink-0" />
+            <span class="flex-1 pl-1.5">{section.name}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0" style="color: var(--text-muted);"><path d="m9 18 6-6-6-6"/></svg>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+)}
 
 <script>
   // Scroll active item into view on load

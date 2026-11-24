@@ -2,6 +2,7 @@ import mermaid from 'mermaid';
 import {
   brandTintedSurface,
   createSerialRunner,
+  fitDiagram,
   hexString,
   hexToRgb,
   isDarkTheme,
@@ -95,9 +96,9 @@ function buildThemeVariables() {
     edgeLabelBackground: surfaceHex,
     titleColor: text,
     fontFamily: resolveVar('--font-sans'),
-    // Matches the article's body text so diagrams read at the same scale
-    // as the surrounding paragraphs.
-    fontSize: '16px',
+    // Un poco menor que el texto del artículo: el diagrama acompaña, no compite
+    // con los párrafos (y se puede ampliar en el visor).
+    fontSize: '14px',
 
     // ER: alternate attribute rows on the surface instead of white.
     attributeBackgroundColorOdd: hexString(mixRgb(hexToRgb(series[0]), surface, dark ? 0.12 : 0.06)),
@@ -223,19 +224,6 @@ function buildThemeCss(): string {
   return rules.join('\n');
 }
 
-// With `useMaxWidth` (mermaid's default for every type but the flowchart
-// config we set), the SVG gets width="100%" plus an inline max-width; in
-// Chromium our `min-width: fit-content` then wins and stretches small
-// diagrams 2-3x. Pin every diagram to its natural size instead.
-function useNaturalSize(svgEl: SVGSVGElement): void {
-  // Gantt is laid out to the container width on purpose; keep it fluid.
-  if (svgEl.getAttribute('aria-roledescription') === 'gantt') return;
-  const box = svgEl.viewBox.baseVal;
-  if (!box || !box.width || !box.height) return;
-  svgEl.setAttribute('width', String(box.width));
-  svgEl.setAttribute('height', String(box.height));
-  svgEl.style.removeProperty('max-width');
-}
 
 // Subgraph titles are centered by mermaid, which is exactly where edges
 // enter the subgraph, so the edge line crosses the title text. Left-align
@@ -300,15 +288,15 @@ async function renderAllOnce(wrappers: HTMLElement[]): Promise<void> {
     // the diamond, which reads as a straight line instead of a decision.
     layout: 'dagre',
     flowchart: {
-      // Render at natural size: with useMaxWidth the SVG is stretched to
-      // the container, which blows narrow diagrams up to oversized text.
+      // The size in the article is set by fitDiagram (diagram-theme.ts); with
+      // useMaxWidth mermaid would stretch narrow diagrams to oversized text.
       useMaxWidth: false,
-      // Wider labels before wrapping: the default 200px made boxes tall
-      // and narrow and clipped long words; diamonds stay compact too.
-      wrappingWidth: 280,
-      nodeSpacing: 50,
-      rankSpacing: 50,
-      padding: 12,
+      // Medidas de diagrama, no de texto: cajas y separaciones compactas para
+      // que un flujo de pocos pasos no ocupe una pantalla entera.
+      wrappingWidth: 220,
+      nodeSpacing: 28,
+      rankSpacing: 32,
+      padding: 8,
     },
     // Gantt spans the width it's given; by default mermaid measures the
     // page body (wider than the article column), so the chart got scaled
@@ -337,7 +325,8 @@ async function renderAllOnce(wrappers: HTMLElement[]): Promise<void> {
       const { svg, bindFunctions } = await mermaid.render(`mermaid-svg-${i}`, readSource(wrapper));
       const svgEl = showDiagram(wrapper, svg);
       if (svgEl) {
-        useNaturalSize(svgEl);
+        // Gantt is laid out to the container width on purpose; keep it fluid.
+        if (svgEl.getAttribute('aria-roledescription') !== 'gantt') fitDiagram(wrapper, svgEl);
         polishClusterTitles(svgEl);
       }
       bindFunctions?.(wrapper);

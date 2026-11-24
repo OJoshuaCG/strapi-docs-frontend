@@ -49,7 +49,7 @@
     line-height: var(--heading-line-height, 1.25);
     margin-top: var(--heading-spacing-top, 2rem);
     margin-bottom: var(--heading-spacing-bottom, 0.75rem);
-    scroll-margin-top: calc(var(--header-height, 3.5rem) + 1rem);
+    scroll-margin-top: 1.5rem;
   }
 
   .prose-docs h1 { font-size: 2rem; }
@@ -106,6 +106,47 @@
     margin-bottom: var(--paragraph-spacing, 1rem);
     color: var(--text-secondary);
   }
+
+  /* Recuadros `>`, `> [!NOTE]` y `> [!WARNING]` (lib/utils/markdown.ts). La nota sale de los colores
+     de recuadro del tema de Strapi, mezclados con el fondo de la página para que queden suaves en
+     claro y en oscuro (el tema suele traer un azul intenso). La advertencia es ámbar fijo. */
+  .prose-docs .callout {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--callout-border) 40%, var(--bg-primary));
+    border-radius: calc(var(--border-radius, 0.5rem) * 1.25);
+    background-color: color-mix(in srgb, var(--callout-bg) 70%, var(--bg-primary));
+    color: var(--text-primary);
+    margin-bottom: var(--paragraph-spacing, 1rem);
+    font-size: 0.95em;
+  }
+  /* El icono (20px) se centra en la primera línea del texto: medio alto de línea menos medio icono. */
+  .prose-docs .callout-icon { flex-shrink: 0; margin-top: calc((1lh - 20px) / 2); color: var(--color-brand-500); }
+  .prose-docs .callout-body { min-width: 0; }
+  .prose-docs .callout-body > :last-child { margin-bottom: 0; }
+  .prose-docs .callout-label { font-weight: 600; }
+
+  .prose-docs .callout-warning {
+    --warning-bg: #fffbeb;
+    --warning-border: #fcd34d;
+    --warning-icon: #b45309;
+    --warning-text: #78350f;
+    background-color: var(--warning-bg);
+    border-color: var(--warning-border);
+    color: var(--warning-text);
+  }
+  .dark .prose-docs .callout-warning {
+    --warning-bg: rgb(245 158 11 / 0.1);
+    --warning-border: rgb(245 158 11 / 0.4);
+    --warning-icon: #fbbf24;
+    --warning-text: #fde68a;
+  }
+  .prose-docs .callout-warning .callout-icon { color: var(--warning-icon); }
+  .prose-docs .callout-warning a { color: inherit; }
+  /* En oscuro el fondo de recuadro del tema suele ser del mismo tono que los enlaces: el enlace
+     toma el color del texto y se distingue por el subrayado. */
+  .dark .prose-docs .callout-note a { color: inherit; }
 
   .prose-docs img {
     border-radius: var(--border-radius, 0.5rem);
@@ -262,39 +303,39 @@
     fill: var(--bg-secondary);
   }
 
-  /* On narrow screens, shrink a wide diagram toward the content width but
-     never below 35rem (~10px text at the default sizes); past that it scrolls
-     horizontally. Scaling to fit made text ~7px, unreadable. Diagrams are
-     two-dimensional content, exempt from reflow (WCAG 1.4.10). Never scales
-     a small diagram up beyond its natural width (--diagram-width, set by the
-     client script). */
+  /* El tamaño lo fija fitDiagram (diagram-theme.ts): cabe a lo ancho y hasta una altura máxima;
+     si para caber queda chico, aparece «Ampliar» y el visor lo muestra a tamaño real. */
   @media (max-width: 768px) {
     .diagram-wrapper {
       padding: 1rem 0.5rem;
     }
-
-    .diagram-wrapper svg {
-      min-width: 0;
-      width: min(var(--diagram-width, 100%), max(35rem, 100%));
-      max-width: none;
-      height: auto;
-    }
   }
 
-  /* Tables */
+  /* Tables: contenedor redondeado que se desplaza a los lados si la tabla no cabe;
+     solo líneas entre filas. El contenedor lo agrega lib/utils/markdown.ts. */
+  .prose-docs .table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: calc(var(--border-radius, 0.5rem) * 1.25);
+    margin-bottom: var(--paragraph-spacing, 1rem);
+  }
+
   .prose-docs table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: var(--paragraph-spacing, 1rem);
     font-size: 0.9rem;
   }
+  .prose-docs .table-wrapper table { margin-bottom: 0; }
 
   .prose-docs th,
   .prose-docs td {
-    border: 1px solid var(--border-color);
-    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--border-color);
+    padding: 0.625rem 0.875rem;
     text-align: left;
+    vertical-align: top;
   }
+  .prose-docs thead th { border-top: 0; }
 
   .prose-docs th {
     background-color: var(--bg-secondary);
@@ -324,4 +365,211 @@
     border-color: var(--color-brand-500);
     color: var(--color-brand-500);
   }
+}
+
+/* Cambio de tema: barrido de izquierda a derecha con View Transitions, el mismo del front de
+   Cirox (ThemeToggle.astro lo dispara). La captura vieja se queda quieta y la nueva entra con una
+   máscara que avanza. */
+::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: theme-sweep 700ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  mask: linear-gradient(90deg, #000 45%, transparent 55%) 100% 0 / 300% 100% no-repeat;
+  mix-blend-mode: normal;
+}
+
+@keyframes theme-sweep {
+  to {
+    mask-position: 0 0;
+  }
+}
+
+/* Sin esto, los elementos con `transition` quedan en la captura con el color del tema anterior. */
+:root:active-view-transition * {
+  transition: none !important;
+}
+
+/* Portada «Acento de marca» (pages/[locale]/index.astro): brillo del color de marca detrás del
+   título, que se desvanece sin bordes. Más intenso en oscuro, donde el fondo lo absorbe. */
+.home-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 32rem;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 60% 100% at 50% 0%,
+    color-mix(in srgb, var(--color-brand-500) 14%, transparent),
+    transparent 70%
+  );
+}
+.dark .home-hero::before {
+  background: radial-gradient(
+    ellipse 60% 100% at 50% 0%,
+    color-mix(in srgb, var(--color-brand-500) 22%, transparent),
+    transparent 70%
+  );
+}
+
+/* «+ N categorías más» de la portada: es un enlace de texto, sin el triángulo de <details>;
+   una vez abierto se oculta y quedan solo las tarjetas. */
+.home-more > summary { list-style: none; }
+.home-more > summary::-webkit-details-marker { display: none; }
+.home-more[open] > summary { display: none; }
+
+/* En oscuro el fondo de recuadro del tema es muy saturado: se mezcla más con el fondo. */
+.dark .prose-docs .callout-note {
+  background-color: color-mix(in srgb, var(--callout-bg) 35%, var(--bg-primary));
+}
+
+/* Botón «Ampliar» de los diagramas reducidos y visor a tamaño real (lib/client/diagram-theme.ts). */
+.diagram-wrapper[data-expandable="true"] {
+  padding-bottom: 3.5rem;
+}
+.diagram-expand {
+  display: none;
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius, 0.5rem);
+  background-color: var(--bg-primary);
+  color: var(--color-brand-500);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.diagram-wrapper[data-expandable="true"] .diagram-expand {
+  display: inline-flex;
+}
+.diagram-expand:hover {
+  border-color: var(--color-brand-500);
+}
+.diagram-expand:focus-visible,
+.diagram-viewer button:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+.diagram-viewer {
+  position: fixed;
+  inset: 1.5rem;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: calc(var(--border-radius, 0.5rem) * 1.5);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  box-shadow: 0 24px 64px rgb(15 23 42 / 0.3);
+}
+.diagram-viewer:not([open]) {
+  display: none;
+}
+.diagram-viewer::backdrop {
+  background: rgb(15 23 42 / 0.6);
+}
+.diagram-viewer-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.diagram-viewer-title {
+  flex: 1;
+  padding-left: 0.375rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.diagram-viewer-percent {
+  min-width: 3.25rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+.diagram-viewer-bar button {
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius, 0.5rem);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.diagram-viewer-canvas {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  justify-content: safe center;
+  align-items: safe center;
+  padding: 1.5rem;
+  background-color: var(--bg-secondary);
+}
+.diagram-viewer-canvas svg {
+  display: block;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .diagram-viewer { inset: 0; border-radius: 0; }
+}
+
+/* Diagrama más alto que la altura máxima: se corta y se desvanece hacia «Ampliar». */
+.diagram-wrapper[data-cropped="true"] {
+  max-height: var(--diagram-max-h);
+  overflow: hidden;
+  align-items: flex-start;
+}
+.diagram-wrapper[data-cropped="true"]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bg-secondary) 70%);
+}
+.diagram-expand {
+  z-index: 1;
+}
+
+/* Visor: se arrastra con el botón izquierdo (diagram-theme.ts, enableDragToPan). */
+.diagram-viewer-canvas {
+  cursor: grab;
+}
+.diagram-viewer-canvas.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+/* Menú lateral con color fijo (DocsLayout.astro): redefine las variables del tema dentro del menú
+   con las del modo oscuro (theme.ts, --sidebar-*), así todo lo de adentro se lee sobre ese fondo. */
+.sidebar-fixed {
+  --bg-sidebar: var(--sidebar-bg);
+  --bg-secondary: var(--sidebar-surface);
+  --text-primary: var(--sidebar-text-primary);
+  --text-secondary: var(--sidebar-text-secondary);
+  /* El tenue del tema oscuro no alcanza contraste sobre este fondo: los títulos usan el secundario. */
+  --text-muted: var(--sidebar-text-secondary);
+  --border-color: var(--sidebar-border);
+  --color-brand-500: var(--sidebar-accent);
+  color-scheme: dark;
 }

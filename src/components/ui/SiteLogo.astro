@@ -1,0 +1,49 @@
+---
+import { resolveMediaUrl } from '@/lib/utils/config';
+import type { DocumentationSpaceSetting } from '@/lib/domain/types';
+
+interface Props {
+  settings: DocumentationSpaceSetting | null;
+  locale: string;
+  /** `inline`: fila del celular · `sidebar`: arriba del menú lateral · `hero`: título de la portada
+   *  (no es enlace: ya se está en la portada). */
+  size?: 'inline' | 'sidebar' | 'hero';
+}
+
+const { settings, locale, size = 'inline' } = Astro.props;
+// `sidebarLogo` es el logo para fondo oscuro; `logoLightMode`, el de fondo claro. El menú lateral
+// siempre es oscuro, así que solo él ignora el de modo claro. Sin logo claro, se usa el oscuro en los dos.
+const dark = settings?.sidebarLogo ?? settings?.logoLightMode;
+const light = size === 'sidebar' ? null : settings?.logoLightMode;
+const logos = light && dark && light.url !== dark.url
+  ? [{ media: light, class: 'dark:hidden' }, { media: dark, class: 'hidden dark:block' }]
+  : dark ? [{ media: dark, class: '' }] : [];
+const siteName = settings?.siteName ?? 'Docs';
+// Tamaño elegido en Strapi (headerLogoSize), escalado según dónde se muestra. Nunca más ancho que
+// su espacio (max-width), para logos muy horizontales.
+const baseRem = { sm: 1.5, md: 2, lg: 2.25, xl: 2.75 }[settings?.headerLogoSize ?? 'md'] ?? 2;
+const height = `${baseRem * { inline: 1, sidebar: 1.6, hero: 2 }[size]}rem`;
+const isLink = size !== 'hero';
+const Tag = isLink ? 'a' : 'span';
+---
+
+<Tag
+  {...(isLink ? { href: `/${locale}` } : {})}
+  class="inline-flex items-center gap-2 max-w-full shrink-0 font-semibold"
+  style="color: var(--text-primary);"
+>
+  {logos.length > 0 ? (
+    logos.map(({ media, class: themeClass }) => (
+      <img
+        src={resolveMediaUrl(media.url)}
+        alt={media.alternativeText ?? siteName}
+        width={media.width}
+        height={media.height}
+        class:list={['object-contain max-w-full', themeClass]}
+        style={`height: ${height}; width: auto;`}
+      />
+    ))
+  ) : (
+    size !== 'hero' && <span class:list={[size === 'sidebar' ? 'text-lg' : 'text-base']}>{siteName}</span>
+  )}
+</Tag>

@@ -3,6 +3,7 @@ import { Graphviz } from '@hpcc-js/wasm-graphviz';
 import {
   brandTintedSurface,
   createSerialRunner,
+  fitDiagram,
   hexString,
   readSource,
   resolveRgb,
@@ -143,7 +144,6 @@ function polishSvg(svgEl: SVGSVGElement, scale: number): void {
   });
 
   svgEl.setAttribute('role', 'group');
-  svgEl.setAttribute('aria-label', 'Diagrama');
 }
 
 // Graphviz paints edges after cluster titles, so an edge entering a cluster
@@ -206,7 +206,10 @@ async function renderAllOnce(wrappers: HTMLElement[]): Promise<void> {
       const themed = sharpenDiamonds(graphviz, injectDefaults(source, defaults));
       const svgEl = sanitizeSvg(graphviz.layout(themed, 'svg', 'dot'));
       polishSvg(svgEl, scale);
+      // Mismo nombre que su contenedor, que el servidor ya puso en el idioma de la página.
+      svgEl.setAttribute('aria-label', wrapper.getAttribute('aria-label') ?? '');
       showDiagram(wrapper, svgEl);
+      fitDiagram(wrapper, svgEl);
       liftClusterTitles(svgEl);
     } catch (error) {
       showDiagramError(wrapper, 'Graphviz', error);

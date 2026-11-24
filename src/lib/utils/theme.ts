@@ -92,6 +92,16 @@ export function buildThemeCss(settings: DocumentationSpaceSetting | null): strin
       --callout-bg: ${c.lightCalloutBg};
       --callout-border: ${c.lightCalloutBorder};
 
+      /* Menú lateral: siempre con los colores del modo oscuro (no cambia con el tema), así el
+         logo se ve igual en los dos modos. Lo aplica la clase .sidebar-fixed de global.css. */
+      --sidebar-bg: ${c.darkBgSidebar};
+      --sidebar-surface: ${c.darkBgSecondary};
+      --sidebar-text-primary: ${c.darkTextPrimary};
+      --sidebar-text-secondary: ${c.darkTextSecondary};
+      --sidebar-border: ${c.darkBorderColor};
+      /* El color de marca aclarado: sobre el fondo oscuro del menú, el puro no llega a contraste AA. */
+      --sidebar-accent: color-mix(in srgb, ${c.brand500} 70%, #fff);
+
       /* Typography */
       --font-sans: '${t.fontSans}';
       --font-mono: '${t.fontMono}';
